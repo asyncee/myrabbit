@@ -24,8 +24,8 @@ class EventBus:
     ):
         self._amqp_url = amqp_url
         self._serializer: Serializer = serializer or JsonSerializer()
-        self.default_exchange_params = default_exchange_params
-        self.default_queue_params = default_queue_params
+        self.default_exchange_params = default_exchange_params or {}
+        self.default_queue_params = default_queue_params or {}
 
     def publish(self, event_source: str, event: str, body: dict) -> None:
         content_type, body = self._serializer.serialize(body)
