@@ -64,7 +64,7 @@ def test_basic_consumer_requeue(rmq_url, run_consumer):
 
     listeners = [
         Listener(
-            exchange=Exchange(type="topic", name=exchange, auto_delete=True,),
+            exchange=Exchange(type="topic", name=exchange, auto_delete=True),
             queue=Q(queue_name, auto_delete=True),
             routing_key="test",
             handle_message=callback,
@@ -98,8 +98,8 @@ def test_basic_consumer_did_not_acknowledged(rmq_url, run_consumer):
         msg.acknowledge()
         queue.put(msg)
 
-    exchange = "exchange_" + str(random.randint(100000, 999999))
-    queue_name = "queue_" + str(random.randint(100000, 999999))
+    exchange = "myrabbit_test_exchange"
+    queue_name = "test_basic_consumer_did_not_acknowledged"
 
     listeners_no_ack = [
         Listener(

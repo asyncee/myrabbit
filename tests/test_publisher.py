@@ -55,7 +55,7 @@ def test_publisher_with_direct_reply(rmq_url, run_consumer):
 
     listeners = [
         Listener(
-            exchange=Exchange(type="topic", name=exchange, auto_delete=True,),
+            exchange=Exchange(type="topic", name=exchange, auto_delete=True),
             queue=Q(queue_name, auto_delete=True),
             routing_key="test",
             handle_message=callback,

@@ -10,8 +10,8 @@ from myrabbit.core.consumer.listener import Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.publisher.basic_publisher import BasicPublisher
 from myrabbit.events.event_with_message import EventWithMessage
+from myrabbit.events.serializer import JsonSerializer
 from myrabbit.events.serializer import Serializer
-from myrabbit.events.serializer.json_serializer import JsonSerializer
 
 
 class EventBus:

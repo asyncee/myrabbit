@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 
 from myrabbit.core.consumer.basic_consumer import BasicConsumer
-from myrabbit.events.event_bus import EventBus
-from myrabbit.events.event_bus_adapter import EventBusAdapter
 from myrabbit.events.event_with_message import EventWithMessage
 
 
@@ -25,7 +23,7 @@ class DataclassEvent:
     name: str
 
 
-def test_on_event(rmq_url, run_consumer):
+def test_on_event(rmq_url, run_consumer, event_bus, event_bus_adapter):
     q = queue.Queue()
 
     pydantic_event = PydanticEvent(name="pydantic-event")
@@ -34,25 +32,18 @@ def test_on_event(rmq_url, run_consumer):
     def callback(msg: EventWithMessage):
         q.put(msg)
 
-    bus = EventBus(
-        rmq_url,
-        default_exchange_params={"auto_delete": True},
-        default_queue_params={"auto_delete": True},
-    )
-    adapter = EventBusAdapter(bus)
-
     listeners = [
-        bus.listener("order-service", "OrderConfirmed", callback),
-        adapter.listener("order-service", DataclassEvent, callback),
-        adapter.listener("order-service", PydanticEvent, callback),
+        event_bus.listener("order-service", "OrderConfirmed", callback),
+        event_bus_adapter.listener("order-service", DataclassEvent, callback),
+        event_bus_adapter.listener("order-service", PydanticEvent, callback),
     ]
 
     consumer = BasicConsumer(rmq_url, listeners)
 
     with run_consumer(consumer):
-        bus.publish("order-service", "OrderConfirmed", {"order_id": 10})
-        adapter.publish("order-service", dataclass_event)
-        adapter.publish("order-service", pydantic_event)
+        event_bus.publish("order-service", "OrderConfirmed", {"order_id": 10})
+        event_bus_adapter.publish("order-service", dataclass_event)
+        event_bus_adapter.publish("order-service", pydantic_event)
 
     message = q.get(block=True, timeout=1)
     assert isinstance(message, EventWithMessage)

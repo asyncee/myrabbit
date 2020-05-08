@@ -5,8 +5,8 @@ from typing import Type
 
 from pydantic import BaseModel
 
-from myrabbit.events.event_adapter import EventAdapter
 from myrabbit.events.event_with_message import T
+from .event_adapter import EventAdapter
 
 
 class DataclassEventAdapter(EventAdapter):

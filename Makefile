@@ -6,4 +6,7 @@ bootstrap:
 	env/bin/poetry install
 
 test:
-	pytest -s --ff tests
+	pytest --ff tests
+
+test_dev:
+	MYRABBIT_DONT_CLEAR_VHOST=1 pytest --ff tests
