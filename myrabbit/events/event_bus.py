@@ -16,10 +16,16 @@ from myrabbit.events.serializer.json_serializer import JsonSerializer
 
 class EventBus:
     def __init__(
-        self, amqp_url: str, serializer: Optional[Serializer] = None,
+        self,
+        amqp_url: str,
+        serializer: Optional[Serializer] = None,
+        default_exchange_params: Optional[dict] = None,
+        default_queue_params: Optional[dict] = None,
     ):
         self._amqp_url = amqp_url
         self._serializer: Serializer = serializer or JsonSerializer()
+        self.default_exchange_params = default_exchange_params
+        self.default_queue_params = default_queue_params
 
     def publish(self, event_source: str, event: str, body: dict) -> None:
         content_type, body = self._serializer.serialize(body)
@@ -35,10 +41,13 @@ class EventBus:
         exchange_params: dict = None,
         queue_params: dict = None,
     ) -> Listener:
-        queue_name = f"{callback.__name__}_{uuid.uuid4()}"
         queue_params = queue_params or {}
+        queue_params.setdefault("name", f"{callback.__name__}_{uuid.uuid4()}")
+        queue_params = {**self.default_queue_params, **queue_params}
         exchange_params = exchange_params or {}
+        exchange_params = {**self.default_exchange_params, **exchange_params}
         exchange_params.setdefault("type", "topic")
+        exchange_params.setdefault("name", self._exchange(event_source))
 
         def deserialize_message(message: PikaMessage):
             callback(
@@ -49,8 +58,8 @@ class EventBus:
         deserialize_message.__doc__ = callback.__doc__
 
         return Listener(
-            exchange=Exchange(name=self._exchange(event_source), **exchange_params),
-            queue=Queue(name=queue_name, **queue_params),
+            exchange=Exchange(**exchange_params),
+            queue=Queue(**queue_params),
             routing_key=event,
             handle_message=deserialize_message,
         )

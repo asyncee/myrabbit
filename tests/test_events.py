@@ -32,10 +32,13 @@ def test_on_event(rmq_url, run_consumer):
     dataclass_event = DataclassEvent(name="dataclass-event")
 
     def callback(msg: EventWithMessage):
-        print("received", msg)
         q.put(msg)
 
-    bus = EventBus(rmq_url)
+    bus = EventBus(
+        rmq_url,
+        default_exchange_params={"auto_delete": True},
+        default_queue_params={"auto_delete": True},
+    )
     adapter = EventBusAdapter(bus)
 
     listeners = [
