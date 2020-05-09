@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 class Exchange:
     name: str
     type: str
-    durable: bool = False
-    auto_delete: bool = False
+    durable: bool = True
+    auto_delete: bool = True
 
 
 @dataclass
 class Queue:
     name: str
-    durable: bool = False
+    durable: bool = True
     auto_delete: bool = False
     exclusive: bool = False
 
