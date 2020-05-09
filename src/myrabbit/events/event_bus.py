@@ -1,4 +1,4 @@
-import uuid
+from functools import wraps
 from typing import Callable
 from typing import Optional
 
@@ -10,6 +10,8 @@ from myrabbit.core.consumer.listener import Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.publisher.basic_publisher import BasicPublisher
 from myrabbit.events.event_with_message import EventWithMessage
+from myrabbit.events.listen_event_strategy.base import ListenEventStrategy
+from myrabbit.events.listen_event_strategy.service_pool import ServicePool
 from myrabbit.events.serializer import JsonSerializer
 from myrabbit.events.serializer import Serializer
 
@@ -38,32 +40,43 @@ class EventBus:
 
     def listener(
         self,
+        event_destination: str,
         event_source: str,
-        event: str,
+        event_name: str,
         callback: Callable[[EventWithMessage], None],
         exchange_params: dict = None,
         queue_params: dict = None,
+        listen_strategy: Optional[ListenEventStrategy] = None,
+        method_name: Optional[str] = None,
     ) -> Listener:
+        listen_strategy = listen_strategy or ServicePool()
+
+        method_name = method_name or getattr(callback, __name__, None) or repr(callback)
+
         queue_params = queue_params or {}
-        queue_params.setdefault("name", f"{callback.__name__}_{uuid.uuid4()}")
         queue_params = {**self.default_queue_params, **queue_params}
+        queue_params.setdefault(
+            "name",
+            listen_strategy.get_queue_name(
+                event_destination, event_source, event_name, method_name,
+            ),
+        )
+
         exchange_params = exchange_params or {}
         exchange_params = {**self.default_exchange_params, **exchange_params}
         exchange_params.setdefault("type", "topic")
         exchange_params.setdefault("name", self._exchange(event_source))
 
+        @wraps(callback)
         def deserialize_message(message: PikaMessage):
             callback(
                 EventWithMessage(self._serializer.deserialize(message.body), message)
             )
 
-        deserialize_message.__name__ = callback.__name__
-        deserialize_message.__doc__ = callback.__doc__
-
         return Listener(
             exchange=Exchange(**exchange_params),
             queue=Queue(**queue_params),
-            routing_key=event,
+            routing_key=event_name,
             handle_message=deserialize_message,
         )
 
