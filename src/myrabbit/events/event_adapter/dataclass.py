@@ -5,7 +5,7 @@ from typing import Type
 
 from pydantic import BaseModel
 
-from myrabbit.events.event_with_message import T
+from myrabbit.events.event_with_message import EventType
 from .event_adapter import EventAdapter
 
 
@@ -16,8 +16,8 @@ class DataclassEventAdapter(EventAdapter):
     def name(self, event: Type[BaseModel]) -> str:
         return event.__name__
 
-    def instantiate(self, event_type: Type[T], body: dict) -> T:
+    def instantiate(self, event_type: Type[EventType], body: dict) -> EventType:
         return event_type(**body)
 
-    def accepts(self, model: T) -> bool:
+    def accepts(self, model: EventType) -> bool:
         return is_dataclass(model)

@@ -30,13 +30,24 @@ class EventBus:
         self.default_queue_params = default_queue_params or {}
 
     def publish(
-        self, event_source: str, event: str, body: Optional[dict] = None
+        self,
+        event_source: str,
+        event: str,
+        body: Optional[dict] = None,
+        properties: Optional[BasicProperties] = None,
     ) -> None:
+        properties = properties or BasicProperties()
+
         body = body or {}
         content_type, body = self._serializer.serialize(body)
-        BasicPublisher(
-            self._amqp_url, self._exchange(event_source), self._routing_key(event)
-        ).publish(body, BasicProperties(content_type=content_type))
+        properties.content_type = content_type
+        publisher = self._make_publisher(event_source=event_source, event_name=event)
+        publisher.publish(body, properties)
+
+    def _make_publisher(self, event_source: str, event_name: str) -> BasicPublisher:
+        return BasicPublisher(
+            self._amqp_url, self._exchange(event_source), self._routing_key(event_name)
+        )
 
     def listener(
         self,

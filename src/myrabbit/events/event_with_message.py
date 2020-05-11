@@ -4,10 +4,10 @@ from typing import TypeVar
 
 from myrabbit.core.consumer.pika_message import PikaMessage
 
-T = TypeVar("T")
+EventType = TypeVar("EventType")
 
 
 @dataclass
-class EventWithMessage(Generic[T]):
-    event: T
+class EventWithMessage(Generic[EventType]):
+    event: EventType
     message: PikaMessage

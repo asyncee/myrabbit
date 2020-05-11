@@ -4,12 +4,12 @@ from typing import Type
 
 from pydantic import BaseModel
 
-from myrabbit.events.event_with_message import T
+from myrabbit.events.event_with_message import EventType
 
 
 class EventAdapter(abc.ABC):
     @abc.abstractmethod
-    def name_and_body(self, event: T) -> Tuple[str, dict]:
+    def name_and_body(self, event: EventType) -> Tuple[str, dict]:
         pass
 
     @abc.abstractmethod
@@ -17,8 +17,8 @@ class EventAdapter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def accepts(self, model: T) -> bool:
+    def accepts(self, model: EventType) -> bool:
         pass
 
-    def instantiate(self, event_type: Type[T], body: dict) -> T:
+    def instantiate(self, event_type: Type[EventType], body: dict) -> EventType:
         return event_type(**body)
