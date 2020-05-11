@@ -6,10 +6,14 @@ bootstrap:
 	env/bin/poetry install
 
 test:
-	pytest --ff tests
+	pytest --ff --cov=src --cov-report term-missing  -m "not benchmark" tests
 
 benchmark:
 	pytest -s -m benchmark tests
+
+lint:
+	mypy src
+	flake8 src
 
 test_dev:
 	MYRABBIT_DONT_CLEAR_VHOST=1 pytest --ff tests
