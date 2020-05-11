@@ -8,5 +8,8 @@ bootstrap:
 test:
 	pytest --ff tests
 
+benchmark:
+	pytest -s -m benchmark tests
+
 test_dev:
 	MYRABBIT_DONT_CLEAR_VHOST=1 pytest --ff tests

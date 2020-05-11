@@ -8,6 +8,7 @@ from myrabbit import EventBus
 from myrabbit import EventBusAdapter
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.events.event_with_message import EventType
+from myrabbit.events.listen_event_strategy import ListenEventStrategy
 
 
 class Service:
@@ -33,7 +34,15 @@ class Service:
             event_source=self.service_name, event=event, properties=properties
         )
 
-    def on(self, event_source: str, event_type: Type[EventType]):
+    def on(
+        self,
+        event_source: str,
+        event_type: Type[EventType],
+        exchange_params: dict = None,
+        queue_params: dict = None,
+        listen_strategy: Optional[ListenEventStrategy] = None,
+        method_name: Optional[str] = None,
+    ):
         def callback_wrapper(fn):
             self._listeners.append(
                 self._event_bus_adapter.listener(
@@ -41,6 +50,10 @@ class Service:
                     event_source=event_source,
                     event_type=event_type,
                     callback=fn,
+                    exchange_params=exchange_params,
+                    queue_params=queue_params,
+                    listen_strategy=listen_strategy,
+                    method_name=method_name,
                 )
             )
             return fn
