@@ -21,10 +21,10 @@ class EventBusAdapter:
 
     def __init__(
         self,
-        base_event_bus: EventBus,
+        event_bus: EventBus,
         event_adapters: Optional[List[EventAdapter]] = None,
     ):
-        self.impl = base_event_bus
+        self.event_bus = event_bus
         self.event_adapters = event_adapters or self.DEFAULT_EVENT_ADAPTERS
 
     def _adapter(self, event: EventType) -> EventAdapter:
@@ -40,7 +40,7 @@ class EventBusAdapter:
         properties: Optional[BasicProperties] = None,
     ) -> None:
         event_name, body = self._adapter(event).name_and_body(event)
-        return self.impl.publish(event_source, event_name, body, properties)
+        self.event_bus.publish(event_source, event_name, body, properties)
 
     def listener(
         self,
@@ -64,7 +64,7 @@ class EventBusAdapter:
 
         event_name = adapter.name(event_type)
 
-        return self.impl.listener(
+        return self.event_bus.listener(
             event_destination=event_destination,
             event_source=event_source,
             event_name=event_name,

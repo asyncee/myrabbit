@@ -3,6 +3,7 @@ import threading
 import time
 from dataclasses import dataclass
 from time import sleep
+from typing import Callable
 
 import pytest
 
@@ -17,7 +18,9 @@ class EmptyEvent:
 
 
 @pytest.mark.benchmark
-def test_events_throughput(event_bus: EventBus, run_consumer, rmq_url):
+def test_events_throughput(
+    event_bus: EventBus, run_consumer: Callable, rmq_url: str
+) -> None:
     """
     You should run this test with
 
@@ -37,7 +40,7 @@ def test_events_throughput(event_bus: EventBus, run_consumer, rmq_url):
         exchange_params={"auto_delete": True, "durable": False},
         queue_params={"auto_delete": True, "durable": False},
     )
-    def increment_received(event):
+    def increment_received(event) -> None:
         nonlocal received
         received += 1
 
@@ -54,7 +57,7 @@ def test_events_throughput(event_bus: EventBus, run_consumer, rmq_url):
             )
             sleep(1)
 
-    def publish_message():
+    def publish_message() -> None:
         nonlocal sent
         while not stop:
             s.publish(EmptyEvent())
@@ -65,18 +68,12 @@ def test_events_throughput(event_bus: EventBus, run_consumer, rmq_url):
         # Thread pool should be used there.
         t1 = threading.Thread(target=counter, args=(time.monotonic(),))
         t2 = threading.Thread(target=publish_message)
-        t3 = threading.Thread(target=publish_message)
-        t4 = threading.Thread(target=publish_message)
-        t5 = threading.Thread(target=publish_message)
+
         t1.start()
         t2.start()
-        t3.start()
-        t4.start()
-        t5.start()
+
         sleep(10)
         stop = True
+
         t1.join()
         t2.join()
-        t3.join()
-        t4.join()
-        t5.join()

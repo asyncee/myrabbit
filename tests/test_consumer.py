@@ -9,13 +9,13 @@ from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue as Q
 from myrabbit.core.consumer.pika_message import PikaMessage
-from myrabbit.core.publisher.basic_publisher import BasicPublisher
+from myrabbit.core.publisher.publisher import make_publisher
 
 logger = logging.getLogger(__name__)
 
 
 def test_basic_consumer_acknowledge(rmq_url, run_consumer):
-    queue = Queue()
+    queue: Queue = Queue()
 
     def callback(msg: PikaMessage):
         queue.put(msg)
@@ -36,20 +36,18 @@ def test_basic_consumer_acknowledge(rmq_url, run_consumer):
 
     consumer = BasicConsumer(rmq_url, listeners)
 
-    publisher = BasicPublisher(rmq_url, exchange, "test")
-
-    with run_consumer(consumer):
-        publisher.publish(b"test-message")
+    with run_consumer(consumer), make_publisher(rmq_url) as publisher:
+        publisher.publish(exchange, "test", b"test-message")
         message = queue.get(timeout=1)
 
     assert message.body == b"test-message"
 
 
 def test_basic_consumer_requeue(rmq_url, run_consumer):
-    queue = Queue()
+    queue: Queue = Queue()
     retries = 0
 
-    def callback(msg: PikaMessage):
+    def callback(msg: PikaMessage) -> None:
         nonlocal retries
         queue.put(msg)
         retries += 1
@@ -74,10 +72,8 @@ def test_basic_consumer_requeue(rmq_url, run_consumer):
 
     consumer = BasicConsumer(rmq_url, listeners)
 
-    publisher = BasicPublisher(rmq_url, exchange, "test")
-
-    with run_consumer(consumer):
-        publisher.publish(b"test-message")
+    with run_consumer(consumer), make_publisher(rmq_url) as publisher:
+        publisher.publish(exchange, "test", b"test-message")
 
         while queue.qsize() != 3:
             sleep(0.1)
@@ -88,13 +84,13 @@ def test_basic_consumer_requeue(rmq_url, run_consumer):
     assert message1.body == message2.body == message3.body == b"test-message"
 
 
-def test_basic_consumer_did_not_acknowledged(rmq_url, run_consumer):
-    queue = Queue()
+def test_basic_consumer_did_not_acknowledged(rmq_url, run_consumer) -> None:
+    queue: Queue = Queue()
 
-    def callback_no_ack(msg: PikaMessage):
+    def callback_no_ack(msg: PikaMessage) -> None:
         queue.put(msg)
 
-    def callback_ack(msg: PikaMessage):
+    def callback_ack(msg: PikaMessage) -> None:
         msg.acknowledge()
         queue.put(msg)
 
@@ -123,14 +119,12 @@ def test_basic_consumer_did_not_acknowledged(rmq_url, run_consumer):
     noack_consumer = BasicConsumer(rmq_url, listeners_no_ack)
     ack_consumer = BasicConsumer(rmq_url, listeners_ack)
 
-    publisher = BasicPublisher(rmq_url, exchange, "test")
+    # This consumer does not acknowledge message.
+    with run_consumer(noack_consumer), make_publisher(rmq_url) as publisher:
+        publisher.publish(exchange, "test", b"test-message")
 
-    with run_consumer(noack_consumer):
-        # This consumer does not acknowledge message.
-        publisher.publish(b"test-message")
-
+    # This consumer does.
     with run_consumer(ack_consumer):
-        # This consumer does.
         sleep(1)
 
     assert queue.qsize() == 2

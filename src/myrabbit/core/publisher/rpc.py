@@ -4,11 +4,11 @@ from typing import Optional
 
 import pika
 from pika import BasicProperties
-from pika import URLParameters
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.channel import Channel
 from pika.exceptions import ChannelWrongStateError
 from pika.exceptions import ConnectionWrongStateError
+from pika.spec import Basic
 
 from myrabbit.core.consumer.pika_message import PikaMessage
 
@@ -20,7 +20,7 @@ def _timeout_timer(
     wait_secs: int,
     stop_timer_event: threading.Event,
     timeout_event: threading.Event,
-):
+) -> None:
     # Lets current thread to block while waiting for timeout.
     blocker = threading.Event()
 
@@ -31,11 +31,11 @@ def _timeout_timer(
         if stop_timer_event.is_set():
             return
 
-    def run_threadsafe():
+    def run_threadsafe() -> None:
         try:
             # https://www.rabbitmq.com/amqp-0-9-1-reference.html#constants
             internal_error = 541
-            chan.connection.close(
+            chan.close(
                 reply_code=internal_error,
                 reply_text=f"RPC wait timeout reached ({wait_secs} s)",
             )
@@ -55,7 +55,7 @@ def _timeout_timer(
 
 
 def rpc(
-    amqp_url: str,
+    connection: pika.BlockingConnection,
     exchange_name: str,
     routing_key: str,
     body: bytes,
@@ -66,16 +66,23 @@ def rpc(
     timeout_event = threading.Event()
     stop_timer_event = threading.Event()
 
-    def on_reply_received(chan: Channel, method_frame, prop, body):
+    def on_reply_received(
+        reply_channel: Channel,
+        reply_method_frame: Basic.Deliver,
+        reply_properties: pika.BasicProperties,
+        reply_body: bytes,
+    ) -> None:
         nonlocal response
-        response = PikaMessage(chan, method_frame, prop, body)
-        chan.close()
-        chan.connection.close()
+        response = PikaMessage(
+            reply_channel, reply_method_frame, reply_properties, reply_body
+        )
+        reply_channel.close()
         stop_timer_event.set()
 
-    with pika.BlockingConnection(parameters=URLParameters(url=amqp_url)) as conn:
-        direct_reply_queue = "amq.rabbitmq.reply-to"
-        channel: BlockingChannel = conn.channel()
+    direct_reply_queue = "amq.rabbitmq.reply-to"
+    channel: BlockingChannel
+
+    with connection.channel() as channel:
         channel.basic_consume(direct_reply_queue, on_reply_received, auto_ack=True)
 
         props = properties or BasicProperties()

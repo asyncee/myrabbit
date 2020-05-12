@@ -1,3 +1,4 @@
+from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Type
@@ -27,7 +28,9 @@ class Service:
     def listeners(self) -> List[Listener]:
         return self._listeners
 
-    def publish(self, event: EventType, properties: Optional[BasicProperties] = None):
+    def publish(
+        self, event: EventType, properties: Optional[BasicProperties] = None
+    ) -> None:
         properties = properties or BasicProperties()
         properties.app_id = self.service_name
         self._event_bus_adapter.publish(
@@ -38,12 +41,12 @@ class Service:
         self,
         event_source: str,
         event_type: Type[EventType],
-        exchange_params: dict = None,
-        queue_params: dict = None,
+        exchange_params: Optional[dict] = None,
+        queue_params: Optional[dict] = None,
         listen_strategy: Optional[ListenEventStrategy] = None,
         method_name: Optional[str] = None,
-    ):
-        def callback_wrapper(fn):
+    ) -> Callable:
+        def callback_wrapper(fn: Callable) -> Callable:
             self._listeners.append(
                 self._event_bus_adapter.listener(
                     event_destination=self.service_name,
@@ -60,5 +63,5 @@ class Service:
 
         return callback_wrapper
 
-    def _make_adapter(self, event_bus: EventBus):
+    def _make_adapter(self, event_bus: EventBus) -> EventBusAdapter:
         return EventBusAdapter(event_bus)
