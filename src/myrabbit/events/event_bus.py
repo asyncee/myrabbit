@@ -39,10 +39,10 @@ class EventBus:
         properties = properties or BasicProperties()
 
         body = body or {}
-        content_type, body = self._serializer.serialize(body)
+        content_type, binary_body = self._serializer.serialize(body)
         properties.content_type = content_type
         publisher = self._make_publisher(event_source=event_source, event_name=event)
-        publisher.publish(body, properties)
+        publisher.publish(binary_body, properties)
 
     def _make_publisher(self, event_source: str, event_name: str) -> BasicPublisher:
         return BasicPublisher(
