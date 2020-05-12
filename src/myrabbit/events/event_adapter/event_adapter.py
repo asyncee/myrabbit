@@ -2,8 +2,6 @@ import abc
 from typing import Tuple
 from typing import Type
 
-from pydantic import BaseModel
-
 from myrabbit.events.event_with_message import EventType
 
 
@@ -13,7 +11,7 @@ class EventAdapter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def name(self, event: Type[BaseModel]) -> str:
+    def name(self, event: Type[EventType]) -> str:
         pass
 
     @abc.abstractmethod

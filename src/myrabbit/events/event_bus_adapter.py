@@ -20,9 +20,7 @@ class EventBusAdapter:
     DEFAULT_EVENT_ADAPTERS = [DataclassEventAdapter(), PydanticEventAdapter()]
 
     def __init__(
-        self,
-        event_bus: EventBus,
-        event_adapters: Optional[List[EventAdapter]] = None,
+        self, event_bus: EventBus, event_adapters: Optional[List[EventAdapter]] = None,
     ):
         self.event_bus = event_bus
         self.event_adapters = event_adapters or self.DEFAULT_EVENT_ADAPTERS
@@ -48,15 +46,15 @@ class EventBusAdapter:
         event_source: str,
         event_type: Type[EventType],
         callback: Callable[[EventWithMessage], None],
-        exchange_params: dict = None,
-        queue_params: dict = None,
+        exchange_params: Optional[dict] = None,
+        queue_params: Optional[dict] = None,
         listen_strategy: Optional[ListenEventStrategy] = None,
         method_name: Optional[str] = None,
     ) -> Listener:
         adapter = self._adapter(event_type)
 
         @wraps(callback)
-        def instantiate_event(event_with_message: EventWithMessage):
+        def instantiate_event(event_with_message: EventWithMessage) -> None:
             event_with_message.event = adapter.instantiate(
                 event_type, event_with_message.event
             )
