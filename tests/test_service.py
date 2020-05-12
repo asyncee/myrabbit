@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from myrabbit import EventBus
 from myrabbit import EventWithMessage
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.service import Service
 
 
@@ -22,7 +22,7 @@ def test_service(event_bus: EventBus, run_consumer, rmq_url):
     def handle_y_event(event: EventWithMessage[YEvent]):
         q.put(event)
 
-    consumer = BasicConsumer(rmq_url, x.listeners)
+    consumer = Consumer(rmq_url, x.listeners)
     with run_consumer(consumer):
         y.publish(YEvent(name="y-service-event"))
 

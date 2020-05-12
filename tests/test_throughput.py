@@ -8,7 +8,8 @@ from typing import Callable
 import pytest
 
 from myrabbit import EventBus
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
+from myrabbit.core.consumer.consumer import ThreadedConsumer
 from myrabbit.service import Service
 
 
@@ -18,14 +19,18 @@ class EmptyEvent:
 
 
 @pytest.mark.benchmark
+@pytest.mark.parametrize(
+    "consumer_class", [Consumer, ThreadedConsumer],
+)
 def test_events_throughput(
-    event_bus: EventBus, run_consumer: Callable, rmq_url: str
+    consumer_class: Consumer, event_bus: EventBus, run_consumer: Callable, rmq_url: str
 ) -> None:
     """
     You should run this test with
 
     `pytest -s tests/test_throughput.py -m benchmark`
     """
+    print('Running with', consumer_class)
 
     logging.getLogger("myrabbit").setLevel(logging.ERROR)
 
@@ -58,22 +63,26 @@ def test_events_throughput(
             sleep(1)
 
     def publish_message() -> None:
+        srv = Service("Counter", EventBus(rmq_url))
         nonlocal sent
         while not stop:
-            s.publish(EmptyEvent())
+            srv.publish(EmptyEvent())
             sent += 1
 
-    consumer = BasicConsumer(rmq_url, s.listeners)
+    consumer = consumer_class(rmq_url, s.listeners)
     with run_consumer(consumer):
         # Thread pool should be used there.
         t1 = threading.Thread(target=counter, args=(time.monotonic(),))
         t2 = threading.Thread(target=publish_message)
+        t3 = threading.Thread(target=publish_message)
 
         t1.start()
         t2.start()
+        t3.start()
 
         sleep(10)
         stop = True
 
         t1.join()
         t2.join()
+        t3.join()

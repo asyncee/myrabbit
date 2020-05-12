@@ -3,7 +3,7 @@ import random
 from queue import Queue
 from time import sleep
 
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.core.consumer.handle_message_strategy import ManualHandle
 from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
@@ -34,7 +34,7 @@ def test_basic_consumer_acknowledge(rmq_url, run_consumer):
         )
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
         publisher.publish(exchange, "test", b"test-message")
@@ -70,7 +70,7 @@ def test_basic_consumer_requeue(rmq_url, run_consumer):
         )
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
         publisher.publish(exchange, "test", b"test-message")
@@ -116,8 +116,8 @@ def test_basic_consumer_did_not_acknowledged(rmq_url, run_consumer) -> None:
         )
     ]
 
-    noack_consumer = BasicConsumer(rmq_url, listeners_no_ack)
-    ack_consumer = BasicConsumer(rmq_url, listeners_ack)
+    noack_consumer = Consumer(rmq_url, listeners_no_ack)
+    ack_consumer = Consumer(rmq_url, listeners_ack)
 
     # This consumer does not acknowledge message.
     with run_consumer(noack_consumer), make_publisher(rmq_url) as publisher:

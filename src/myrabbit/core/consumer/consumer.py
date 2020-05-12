@@ -1,8 +1,10 @@
 import functools
 import logging
+from concurrent.futures.thread import ThreadPoolExecutor
 from functools import partial
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import pika
 from pika import SelectConnection
@@ -20,7 +22,7 @@ from myrabbit.core.consumer.pika_message import PikaMessage
 LOGGER = logging.getLogger(__name__)
 
 
-class BasicConsumer(object):
+class Consumer(object):
     """This is an example consumer that will handle unexpected interactions
     with RabbitMQ such as channel and connection closures.
     If RabbitMQ closes the connection, this class will stop and indicate
@@ -31,7 +33,9 @@ class BasicConsumer(object):
     commands that were issued and that should surface in the output as well.
     """
 
-    def __init__(self, amqp_url, listeners: List[Listener]):
+    def __init__(
+        self, amqp_url: str, listeners: List[Listener], prefetch_count: int = 1
+    ):
         """Create a new instance of the consumer class, passing in the AMQP
         URL used to connect to RabbitMQ.
         :param str amqp_url: The AMQP url to connect with
@@ -48,7 +52,7 @@ class BasicConsumer(object):
         self._consuming = False
         # In production, experiment with higher prefetch values
         # for higher consumer throughput
-        self._prefetch_count = 1
+        self._prefetch_count = prefetch_count
 
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
@@ -317,7 +321,7 @@ class BasicConsumer(object):
 
     def on_message(
         self,
-        _unused_channel: Channel,
+        unused_channel: Channel,
         basic_deliver: Basic.Deliver,
         properties: pika.BasicProperties,
         body: bytes,
@@ -338,65 +342,19 @@ class BasicConsumer(object):
             body,
             channel.consumer_tag,
         )
+        self._handle_message(unused_channel, basic_deliver, properties, body, channel)
 
+    def _handle_message(
+        self,
+        unused_channel: Channel,
+        basic_deliver: Basic.Deliver,
+        properties: pika.BasicProperties,
+        body: bytes,
+        channel: ConsumedChannel,
+    ) -> None:
         channel.listener.handle(
-            PikaMessage(_unused_channel, basic_deliver, properties, body),
+            PikaMessage(unused_channel, basic_deliver, properties, body),
         )
-
-        # def worker(
-        #     callback: Callable[[], None], delivery_tag: int, channel: ConsumedChannel
-        # ):
-        #     try:
-        #         response = callback()
-        #     except Exception as e:
-        #         LOGGER.exception("Exception occurred while calling callback")
-        #
-        #         if properties.reply_to:
-        #             reply = channel.listener.make_reply(
-        #                 body, properties, None, e
-        #             )
-        #             sender = properties.headers[X_SENDER_NAME]
-        #             Publisher(sender, self._url).send_command_reply(
-        #                 properties.reply_to, reply
-        #             )
-        #         else:
-        #             channel.channel.connection.ioloop.add_callback_threadsafe(
-        #                 partial(self.republish_message, delivery_tag, consumer)
-        #             )
-        #     else:
-        #         if properties.reply_to:
-        #             reply = consumer.channel.listener.make_reply(
-        #                 deserialized_body, properties, response, None
-        #             )
-        #             sender = properties.headers[X_SENDER_NAME]
-        #             Publisher(sender, self._url).send_command_reply(
-        #                 properties.reply_to, reply
-        #             )
-        #         else:
-        #             consumer.channel.channel.connection.ioloop.add_callback_threadsafe(
-        #                 partial(self.acknowledge_message, delivery_tag, consumer)
-        #             )
-        #
-        # self._executor.submit(
-        #     worker,
-        #     partial(consumer.channel.listener.callback, deserialized_body, properties),
-        #     basic_deliver.delivery_tag,
-        #     consumer,
-        # )
-
-    # def republish_message(self, delivery_tag: int, channel: ConsumedChannel):
-    #     consumer.pika_channel.pika_channel.basic_reject(delivery_tag, requeue=True)
-    #
-    # def acknowledge_message(self, delivery_tag: int, channel: ConsumedChannel):
-    #     """
-    #     Acknowledge the message delivery from RabbitMQ by sending a
-    #     Basic.Ack RPC method for the delivery tag.
-    #     :param int delivery_tag: The delivery tag from the Basic.Deliver frame
-    #     """
-    #     LOGGER.info(
-    #         "Acknowledging message %s", delivery_tag,
-    #     )
-    #     consumer.pika_channel.pika_channel.basic_ack(delivery_tag)
 
     def stop_consuming(self):
         """Tell RabbitMQ that you would like to stop consuming by sending the
@@ -431,12 +389,11 @@ class BasicConsumer(object):
         LOGGER.info("Closing the channel")
         channel.pika_channel.close()
 
-    def run(self):
+    def run(self) -> None:
         """Run the example consumer by connecting to RabbitMQ and then
         starting the IOLoop to block and allow the AsyncioConnection to operate.
         """
         self._connection = self.connect()
-        # self._connection.ioloop.run_forever()
         self._connection.ioloop.start()
 
     def stop(self):
@@ -461,3 +418,24 @@ class BasicConsumer(object):
             else:
                 self._connection.ioloop.stop()
             LOGGER.info("Stopped")
+
+
+class ThreadedConsumer(Consumer):
+    def __init__(
+        self, *args, executor: Optional[ThreadPoolExecutor] = None, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._executor = executor or ThreadPoolExecutor()
+
+    def _handle_message(
+        self,
+        unused_channel: Channel,
+        basic_deliver: Basic.Deliver,
+        properties: pika.BasicProperties,
+        body: bytes,
+        channel: ConsumedChannel,
+    ) -> None:
+        self._executor.submit(
+            channel.listener.handle,
+            PikaMessage(unused_channel, basic_deliver, properties, body),
+        )

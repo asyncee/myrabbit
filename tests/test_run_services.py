@@ -23,7 +23,7 @@ def test_run_services(rmq_url, event_bus: EventBus):
     def handle_a(*args, **kwargs):
         pass
 
-    with mock.patch("myrabbit.run_services.BasicConsumer") as m:
+    with mock.patch("myrabbit.run_services.Consumer") as m:
         run_services(rmq_url, a, b)
         assert m.called_with(rmq_url, a.listeners + b.listeners)
         assert m.run.called_once()

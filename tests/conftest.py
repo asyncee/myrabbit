@@ -9,7 +9,7 @@ import requests
 
 from myrabbit import EventBus
 from myrabbit import EventBusAdapter
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
 from .logging import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def rmq_url() -> str:
 @pytest.fixture
 def run_consumer(rmq_url):
     @contextmanager
-    def runner(consumer: BasicConsumer):
+    def runner(consumer: Consumer):
         def worker():
             try:
                 consumer.run()

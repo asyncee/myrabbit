@@ -1,7 +1,7 @@
 import logging
 import time
 
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class ReconnectingConsumer:
         self._amqp_url = amqp_url
         self.listeners = listeners
 
-        self._consumer = BasicConsumer(self._amqp_url, self.listeners)
+        self._consumer = Consumer(self._amqp_url, self.listeners)
         self._should_run = True
 
     def run(self):
@@ -38,7 +38,7 @@ class ReconnectingConsumer:
             reconnect_delay = self._get_reconnect_delay()
             LOGGER.info("Reconnecting after %d seconds", reconnect_delay)
             time.sleep(reconnect_delay)
-            self._consumer = BasicConsumer(self._amqp_url, self.listeners)
+            self._consumer = Consumer(self._amqp_url, self.listeners)
 
     def _get_reconnect_delay(self):
         if self._consumer.was_consuming:

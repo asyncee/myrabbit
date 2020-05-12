@@ -6,7 +6,7 @@ from typing import Callable
 
 import pytest
 
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue as Q
@@ -34,7 +34,7 @@ def test_basic_publisher_multisend(rmq_url: str, run_consumer: Callable) -> None
         )
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     to_send = [b"A", b"B", b"C"]
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
@@ -62,7 +62,7 @@ def test_publisher_rpc_with_direct_reply(rmq_url: str, run_consumer: Callable) -
         )
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
         response = publisher.rpc(exchange, "test", b"aaa", timeout=None)
@@ -95,7 +95,7 @@ def test_publisher_rpc_with_direct_reply_timeout(
         )
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
         with pytest.raises(TimeoutError):
@@ -120,7 +120,7 @@ def test_publisher_rpc_with_direct_reply_timeout_but_message_replied_faster(
         )
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
         response = publisher.rpc(exchange, "test", b"xxx", timeout=10)

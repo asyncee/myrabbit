@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from myrabbit import EventBus
 from myrabbit import EventBusAdapter
-from myrabbit.core.consumer.basic_consumer import BasicConsumer
+from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.events.event_with_message import EventWithMessage
 from myrabbit.events.listen_event_strategy import Broadcast
 from myrabbit.events.listen_event_strategy import ServicePool
@@ -46,7 +46,7 @@ def test_events(
         event_bus_adapter.listener("service-a", "service-b", PydanticEvent, callback),
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer):
         event_bus.publish("service-b", "OrderConfirmed", {"order_id": 10})
@@ -83,7 +83,7 @@ def test_events_singleton(
         ),
     ]
 
-    consumer = BasicConsumer(rmq_url, listeners)
+    consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer):
         event_bus.publish("service-b", "event", {"name": "test-event"})
@@ -118,9 +118,9 @@ def test_events_service_pool(
         ),
     ]
 
-    consumer_a_1 = BasicConsumer(rmq_url, listeners)
-    consumer_a_2 = BasicConsumer(rmq_url, listeners)
-    consumer_b = BasicConsumer(rmq_url, listeners)
+    consumer_a_1 = Consumer(rmq_url, listeners)
+    consumer_a_2 = Consumer(rmq_url, listeners)
+    consumer_b = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer_a_1):
         with run_consumer(consumer_a_2):
@@ -177,9 +177,9 @@ def test_events_broadcast(
         ),
     ]
 
-    consumer_a_1 = BasicConsumer(rmq_url, listeners)
-    consumer_a_2 = BasicConsumer(rmq_url, listeners)
-    consumer_b = BasicConsumer(rmq_url, listeners)
+    consumer_a_1 = Consumer(rmq_url, listeners)
+    consumer_a_2 = Consumer(rmq_url, listeners)
+    consumer_b = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer_a_1):
         with run_consumer(consumer_a_2):
