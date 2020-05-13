@@ -9,4 +9,4 @@ class ServicePool(ListenEventStrategy):
         event_name: str,
         method_name: str,
     ) -> str:
-        return f"event:{event_source}.{event_name}.to.{event_destination}.{method_name}"
+        return f"{event_source}.{event_name}.to.{event_destination}.{method_name}"

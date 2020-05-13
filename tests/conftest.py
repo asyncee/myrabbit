@@ -3,12 +3,15 @@ import os
 import threading
 from contextlib import contextmanager
 from time import sleep
+from typing import Callable
 
 import pytest
 import requests
 
 from myrabbit import EventBus
 from myrabbit import EventBusAdapter
+from myrabbit.commands.command_bus import CommandBus
+from myrabbit.commands.command_bus_adapter import CommandBusAdapter
 from myrabbit.core.consumer.consumer import Consumer
 from .logging import setup_logging
 
@@ -21,13 +24,13 @@ amqp_host = "localhost:5672"
 vhost = "myrabbit_test"
 
 
-def pytest_sessionstart(session):
+def pytest_sessionstart(session) -> None:
     requests.delete(f"http://{api_host}/api/vhosts/{vhost}", auth=("guest", "guest"))
     requests.put(f"http://{api_host}/api/vhosts/{vhost}", auth=("guest", "guest"))
     print(f"Re-created vhost {vhost!r}")
 
 
-def pytest_sessionfinish(session):
+def pytest_sessionfinish(session) -> None:
     if os.getenv("MYRABBIT_DONT_CLEAR_VHOST", False):
         return
     requests.delete(f"http://{api_host}/api/vhosts/{vhost}", auth=("guest", "guest"))
@@ -40,10 +43,10 @@ def rmq_url() -> str:
 
 
 @pytest.fixture
-def run_consumer(rmq_url):
+def run_consumer(rmq_url: str) -> Callable:
     @contextmanager
     def runner(consumer: Consumer):
-        def worker():
+        def worker() -> None:
             try:
                 consumer.run()
             except Exception:
@@ -65,14 +68,20 @@ def run_consumer(rmq_url):
 
 
 @pytest.fixture()
-def event_bus(rmq_url):
-    return EventBus(
-        rmq_url,
-        default_exchange_params={"auto_delete": True},
-        default_queue_params={"auto_delete": True},
-    )
+def event_bus(rmq_url: str) -> EventBus:
+    return EventBus(rmq_url)
 
 
 @pytest.fixture()
-def event_bus_adapter(event_bus):
+def event_bus_adapter(event_bus: EventBus) -> EventBusAdapter:
     return EventBusAdapter(event_bus)
+
+
+@pytest.fixture()
+def command_bus(rmq_url: str) -> CommandBus:
+    return CommandBus(rmq_url)
+
+
+@pytest.fixture()
+def command_bus_adapter(command_bus: CommandBus) -> CommandBusAdapter:
+    return CommandBusAdapter(command_bus)

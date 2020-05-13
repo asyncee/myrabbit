@@ -6,6 +6,7 @@ import pika
 from pika import BasicProperties
 from pika import URLParameters
 
+from myrabbit.commands.command_with_message import CommandWithMessage
 from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue
@@ -13,12 +14,9 @@ from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.publisher.publisher import Publisher
 from myrabbit.core.serializer import JsonSerializer
 from myrabbit.core.serializer import Serializer
-from myrabbit.events.event_with_message import EventWithMessage
-from myrabbit.events.listen_event_strategy.base import ListenEventStrategy
-from myrabbit.events.listen_event_strategy.service_pool import ServicePool
 
 
-class EventBus:
+class CommandBus:
     def __init__(
         self,
         amqp_url: str,
@@ -35,8 +33,8 @@ class EventBus:
 
     def publish(
         self,
-        event_source: str,
-        event_name: str,
+        command_destination: str,
+        command_name: str,
         body: Optional[dict] = None,
         properties: Optional[BasicProperties] = None,
     ) -> None:
@@ -48,56 +46,46 @@ class EventBus:
 
         with Publisher(self._publisher_connection) as publisher:
             publisher.publish(
-                self._exchange(event_source),
-                self._routing_key(event_name),
+                self._exchange(command_destination),
+                self._routing_key(command_name),
                 binary_body,
                 properties,
             )
 
     def listener(
         self,
-        event_destination: str,
-        event_source: str,
-        event_name: str,
-        callback: Callable[[EventWithMessage], None],
+        command_destination: str,
+        command_name: str,
+        callback: Callable[[CommandWithMessage], None],
         exchange_params: Optional[dict] = None,
         queue_params: Optional[dict] = None,
-        listen_strategy: Optional[ListenEventStrategy] = None,
-        method_name: Optional[str] = None,
     ) -> Listener:
-        listen_strategy = listen_strategy or ServicePool()
-
-        method_name = method_name or getattr(callback, __name__, None) or repr(callback)
-
         queue_params = queue_params or {}
         queue_params = {**self.default_queue_params, **queue_params}
         queue_params.setdefault(
-            "name",
-            listen_strategy.get_queue_name(
-                event_destination, event_source, event_name, method_name,
-            ),
+            "name", f"{command_destination}.{command_name}",
         )
 
         exchange_params = exchange_params or {}
         exchange_params = {**self.default_exchange_params, **exchange_params}
-        exchange_params.setdefault("type", "topic")
-        exchange_params.setdefault("name", self._exchange(event_source))
+        exchange_params.setdefault("type", "direct")
+        exchange_params.setdefault("name", self._exchange(command_destination))
 
         @wraps(callback)
         def deserialize_message(message: PikaMessage) -> None:
             callback(
-                EventWithMessage(self._serializer.deserialize(message.body), message)
+                CommandWithMessage(self._serializer.deserialize(message.body), message)
             )
 
         return Listener(
             exchange=Exchange(**exchange_params),
             queue=Queue(**queue_params),
-            routing_key=event_name,
+            routing_key=command_name,
             handle_message=deserialize_message,
         )
 
-    def _exchange(self, event_source: str) -> str:
-        return f"{event_source}.events"
+    def _exchange(self, command_destination: str) -> str:
+        return f"{command_destination}.commands"
 
-    def _routing_key(self, event: str) -> str:
-        return event
+    def _routing_key(self, command_name: str) -> str:
+        return command_name

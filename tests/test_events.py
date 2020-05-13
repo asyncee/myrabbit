@@ -15,11 +15,6 @@ from myrabbit.events.listen_event_strategy import ServicePool
 from myrabbit.events.listen_event_strategy import Singleton
 
 
-class BasicClassEvent:
-    def __init__(self, name: str):
-        self.name = name
-
-
 class PydanticEvent(BaseModel):
     name: str
 

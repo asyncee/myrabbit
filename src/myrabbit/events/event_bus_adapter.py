@@ -7,9 +7,8 @@ from typing import Type
 from pika import BasicProperties
 
 from myrabbit.core.consumer.listener import Listener
-from myrabbit.events.event_adapter import DataclassEventAdapter
-from myrabbit.events.event_adapter import EventAdapter
-from myrabbit.events.event_adapter import PydanticEventAdapter
+from myrabbit.core.converter import Converter
+from myrabbit.core.converter import DEFAULT_CONVERTERS
 from myrabbit.events.event_bus import EventBus
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.event_with_message import EventWithMessage
@@ -17,19 +16,17 @@ from myrabbit.events.listen_event_strategy import ListenEventStrategy
 
 
 class EventBusAdapter:
-    DEFAULT_EVENT_ADAPTERS = [DataclassEventAdapter(), PydanticEventAdapter()]
-
     def __init__(
-        self, event_bus: EventBus, event_adapters: Optional[List[EventAdapter]] = None,
+        self, event_bus: EventBus, converters: Optional[List[Converter]] = None,
     ):
         self.event_bus = event_bus
-        self.event_adapters = event_adapters or self.DEFAULT_EVENT_ADAPTERS
+        self.converters = converters or DEFAULT_CONVERTERS
 
-    def _adapter(self, event: EventType) -> EventAdapter:
-        for adapter in self.event_adapters:
-            if adapter.accepts(event):
-                return adapter
-        raise RuntimeError("Adapter not found")
+    def _converter(self, event: EventType) -> Converter:
+        for converter in self.converters:
+            if converter.accepts(event):
+                return converter
+        raise RuntimeError("Converter not found")
 
     def publish(
         self,
@@ -37,7 +34,7 @@ class EventBusAdapter:
         event: EventType,
         properties: Optional[BasicProperties] = None,
     ) -> None:
-        event_name, body = self._adapter(event).name_and_body(event)
+        event_name, body = self._converter(event).name_and_body(event)
         self.event_bus.publish(event_source, event_name, body, properties)
 
     def listener(
@@ -51,16 +48,16 @@ class EventBusAdapter:
         listen_strategy: Optional[ListenEventStrategy] = None,
         method_name: Optional[str] = None,
     ) -> Listener:
-        adapter = self._adapter(event_type)
+        converter = self._converter(event_type)
 
         @wraps(callback)
         def instantiate_event(event_with_message: EventWithMessage) -> None:
-            event_with_message.event = adapter.instantiate(
+            event_with_message.event = converter.instantiate(
                 event_type, event_with_message.event
             )
             callback(event_with_message)
 
-        event_name = adapter.name(event_type)
+        event_name = converter.name(event_type)
 
         return self.event_bus.listener(
             event_destination=event_destination,

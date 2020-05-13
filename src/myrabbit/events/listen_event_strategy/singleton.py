@@ -9,4 +9,4 @@ class Singleton(ListenEventStrategy):
         event_name: str,
         method_name: str,
     ) -> str:
-        return f"event:{event_source}.{event_name}"
+        return f"{event_source}.{event_name}"

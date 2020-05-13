@@ -15,4 +15,4 @@ class Broadcast(ListenEventStrategy):
         event_name: str,
         method_name: str,
     ) -> str:
-        return f"event:{event_source}.{event_name}.to.{event_destination}.{method_name}:{self._broadcast_identifier}"
+        return f"{event_source}.{event_name}.to.{event_destination}.{method_name}:{self._broadcast_identifier}"
