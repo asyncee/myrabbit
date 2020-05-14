@@ -31,7 +31,7 @@ class CommandBus:
 
         self._publisher_connection = pika.BlockingConnection(URLParameters(amqp_url))
 
-    def publish(
+    def send(
         self,
         command_destination: str,
         command_name: str,

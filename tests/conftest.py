@@ -10,6 +10,7 @@ import requests
 
 from myrabbit import EventBus
 from myrabbit import EventBusAdapter
+from myrabbit import Service
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
 from myrabbit.core.consumer.consumer import Consumer
@@ -85,3 +86,10 @@ def command_bus(rmq_url: str) -> CommandBus:
 @pytest.fixture()
 def command_bus_adapter(command_bus: CommandBus) -> CommandBusAdapter:
     return CommandBusAdapter(command_bus)
+
+
+@pytest.fixture()
+def make_service(event_bus: EventBus, command_bus: CommandBus):
+    def factory(name: str) -> Service:
+        return Service(name, event_bus, command_bus)
+    return factory

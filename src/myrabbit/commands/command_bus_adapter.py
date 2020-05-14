@@ -27,14 +27,14 @@ class CommandBusAdapter:
                 return converter
         raise RuntimeError("Converter not found")
 
-    def publish(
+    def send(
         self,
-        command_source: str,
+        command_destination: str,
         command: CommandType,
         properties: Optional[BasicProperties] = None,
     ) -> None:
         command_name, body = self._converter(command).name_and_body(command)
-        self.command_bus.publish(command_source, command_name, body, properties)
+        self.command_bus.send(command_destination, command_name, body, properties)
 
     def listener(
         self,

@@ -8,6 +8,7 @@ from typing import Callable
 import pytest
 
 from myrabbit import EventBus
+from myrabbit import EventWithMessage
 from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.core.consumer.consumer import ThreadedConsumer
 from myrabbit.service import Service
@@ -23,35 +24,38 @@ class EmptyEvent:
     "consumer_class", [Consumer, ThreadedConsumer],
 )
 def test_events_throughput(
-    consumer_class: Consumer, event_bus: EventBus, run_consumer: Callable, rmq_url: str
+    consumer_class: Consumer,
+    make_service: Callable,
+    run_consumer: Callable,
+    rmq_url: str,
 ) -> None:
     """
     You should run this test with
 
     `pytest -s tests/test_throughput.py -m benchmark`
     """
-    print('Running with', consumer_class)
+    print("Running with", consumer_class)
 
     logging.getLogger("myrabbit").setLevel(logging.ERROR)
 
     received = 0
     sent = 0
 
-    s = Service("Counter", event_bus)
+    s: Service = make_service("Counter")
 
-    @s.on(
+    @s.on_event(
         "Counter",
         EmptyEvent,
         exchange_params={"auto_delete": True, "durable": False},
         queue_params={"auto_delete": True, "durable": False},
     )
-    def increment_received(event) -> None:
+    def increment_received(event: EventWithMessage) -> None:
         nonlocal received
         received += 1
 
     stop = False
 
-    def counter(start_time: int):
+    def counter(start_time: int) -> None:
         print()
         while not stop:
             elapsed = time.monotonic() - start_time
