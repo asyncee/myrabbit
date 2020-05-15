@@ -183,6 +183,11 @@ class Consumer(object):
         """
         LOGGER.info("Declaring exchange: %s", consumed_channel.exchange)
         exchange = consumed_channel.exchange
+
+        if exchange.name == "":
+            self.setup_queue(consumed_channel)
+            return
+
         consumed_channel.pika_channel.exchange_declare(
             exchange=exchange.name,
             exchange_type=exchange.type,
@@ -195,7 +200,7 @@ class Consumer(object):
 
     def on_exchange_declareok(
         self, _unused_frame: Exchange.DeclareOk, channel: ConsumedChannel
-    ):
+    ) -> None:
         """
         Invoked by pika when RabbitMQ has finished the
         Exchange.Declare RPC command.
@@ -230,6 +235,10 @@ class Consumer(object):
         RPC command. When this command is complete, the on_bindok method will
         be invoked by pika.
         """
+        if channel.exchange.name == "":
+            self.set_qos(channel)
+            return
+
         LOGGER.info(
             "Binding %s to %s with %s",
             channel.exchange,
