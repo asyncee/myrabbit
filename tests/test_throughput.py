@@ -4,10 +4,10 @@ import time
 from dataclasses import dataclass
 from time import sleep
 from typing import Callable
+from typing import Type
 
 import pytest
 
-from myrabbit import EventBus
 from myrabbit import EventWithMessage
 from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.core.consumer.consumer import ThreadedConsumer
@@ -24,7 +24,7 @@ class EmptyEvent:
     "consumer_class", [Consumer, ThreadedConsumer],
 )
 def test_events_throughput(
-    consumer_class: Consumer,
+    consumer_class: Type[Consumer],
     make_service: Callable,
     run_consumer: Callable,
     rmq_url: str,
@@ -67,7 +67,7 @@ def test_events_throughput(
             sleep(1)
 
     def publish_message() -> None:
-        srv = Service("Counter", EventBus(rmq_url))
+        srv: Service = make_service("Counter")
         nonlocal sent
         while not stop:
             srv.publish(EmptyEvent())

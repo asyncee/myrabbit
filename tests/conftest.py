@@ -89,7 +89,8 @@ def command_bus_adapter(command_bus: CommandBus) -> CommandBusAdapter:
 
 
 @pytest.fixture()
-def make_service(event_bus: EventBus, command_bus: CommandBus):
+def make_service(rmq_url):
     def factory(name: str) -> Service:
-        return Service(name, event_bus, command_bus)
+        return Service(name, EventBus(rmq_url), CommandBus(rmq_url))
+
     return factory
