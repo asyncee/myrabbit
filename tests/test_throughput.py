@@ -90,3 +90,6 @@ def test_events_throughput(
         t1.join()
         t2.join()
         t3.join()
+
+    assert sent > 0
+    assert received > 0

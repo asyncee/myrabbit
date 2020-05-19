@@ -1,24 +1,29 @@
+import logging
 import uuid
 from functools import wraps
 from typing import Any
 from typing import Callable
 from typing import Optional
+from typing import Union
 
 import pika
 from pika import BasicProperties
 from pika import URLParameters
 
+from myrabbit.commands import command_outcome
+from myrabbit.commands.command_outcome import CommandReply
 from myrabbit.commands.command_with_message import CommandWithMessage
 from myrabbit.commands.command_with_message import ReplyWithMessage
 from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
+from myrabbit.core.consumer.reply import Reply
 from myrabbit.core.publisher.publisher import Publisher
 from myrabbit.core.serializer import JsonSerializer
 from myrabbit.core.serializer import Serializer
 
-REPLY_KEY = "__myrabbit_reply__"
+logger = logging.getLogger(__name__)
 
 
 class CommandBus:
@@ -70,7 +75,7 @@ class CommandBus:
         self,
         command_destination: str,
         command_name: str,
-        callback: Callable[[CommandWithMessage], Any],  # Optional[Union[Result, Any]]
+        callback: Callable[[CommandWithMessage], Optional[Union[CommandReply, Any]]],
         exchange_params: Optional[dict] = None,
         queue_params: Optional[dict] = None,
     ) -> Listener:
@@ -86,24 +91,38 @@ class CommandBus:
         exchange_params.setdefault("name", self._exchange(command_destination))
 
         @wraps(callback)
-        def deserialize_message(message: PikaMessage) -> Any:
-            reply = callback(
-                CommandWithMessage(self._serializer.deserialize(message.body), message)
-            )
+        def deserialize_command_and_handle_reply(
+            message: PikaMessage,
+        ) -> Optional[Reply]:
+            try:
+                callback_result = callback(
+                    CommandWithMessage(
+                        self._serializer.deserialize(message.body), message
+                    )
+                )
+            except Exception as e:
+                logger.exception(
+                    "Exception happened during handling message %s using handler %s",
+                    message,
+                    callback,
+                )
+                return command_outcome.exception(e).to_reply(self._serializer)
 
-            if reply is None:
+            if callback_result is None:
                 return None
 
-            if not isinstance(reply, dict):
-                reply = {REPLY_KEY: reply}
-            _, binary_reply = self._serializer.serialize(reply)
-            return binary_reply
+            if isinstance(callback_result, CommandReply):
+                return callback_result.to_reply(self._serializer)
+
+            return command_outcome.success(body=callback_result).to_reply(
+                self._serializer
+            )
 
         return Listener(
             exchange=Exchange(**exchange_params),
             queue=Queue(**queue_params),
             routing_key=self._routing_key(command_name),
-            handle_message=deserialize_message,
+            handle_message=deserialize_command_and_handle_reply,
         )
 
     def reply_listener(
@@ -127,13 +146,7 @@ class CommandBus:
         @wraps(callback)
         def deserialize_message(message: PikaMessage) -> None:
             reply: dict = self._serializer.deserialize(message.body)
-
-            if REPLY_KEY in reply:
-                reply_body = reply[REPLY_KEY]
-            else:
-                reply_body = reply
-
-            callback(ReplyWithMessage(reply=reply_body, message=message))
+            callback(ReplyWithMessage(reply=reply, message=message))
 
         return Listener(
             exchange=Exchange(**exchange_params),

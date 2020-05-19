@@ -11,6 +11,7 @@ from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue as Q
 from myrabbit.core.consumer.pika_message import PikaMessage
+from myrabbit.core.consumer.reply import Reply
 from myrabbit.core.publisher import make_publisher
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,8 @@ def test_publisher_rpc_with_direct_reply(rmq_url: str, run_consumer: Callable) -
     exchange = "exchange_" + str(random.randint(100000, 999999))
     queue_name = "queue_" + str(random.randint(100000, 999999))
 
-    def callback(msg: PikaMessage) -> bytes:
-        return msg.body + b"-reply"
+    def callback(msg: PikaMessage) -> Reply:
+        return Reply(body=msg.body + b"-reply")
 
     listeners = [
         Listener(
@@ -82,9 +83,9 @@ def test_publisher_rpc_with_direct_reply_timeout(
     exchange = "exchange_" + str(random.randint(100000, 999999))
     queue_name = "queue_" + str(random.randint(100000, 999999))
 
-    def callback(msg: PikaMessage) -> bytes:
+    def callback(msg: PikaMessage) -> Reply:
         sleep(2)
-        return msg.body + b"-reply"
+        return Reply(body=msg.body + b"-reply")
 
     listeners = [
         Listener(
@@ -108,8 +109,8 @@ def test_publisher_rpc_with_direct_reply_timeout_but_message_replied_faster(
     exchange = "exchange_" + str(random.randint(100000, 999999))
     queue_name = "queue_" + str(random.randint(100000, 999999))
 
-    def callback(msg: PikaMessage) -> bytes:
-        return msg.body + b"-reply"
+    def callback(msg: PikaMessage) -> Reply:
+        return Reply(body=msg.body + b"-reply")
 
     listeners = [
         Listener(

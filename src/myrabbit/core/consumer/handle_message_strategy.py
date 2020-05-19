@@ -4,6 +4,7 @@ from typing import Optional
 
 from myrabbit.core.consumer.message_handler import MessageHandler
 from myrabbit.core.consumer.pika_message import PikaMessage
+from myrabbit.core.consumer.reply import Reply
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class BaseStrategy(HandleMessageStrategy):
     def __call__(self, handle_message: MessageHandler, message: PikaMessage) -> None:
         # todo: add retry support on expected exceptions
         try:
-            result: Optional[bytes] = handle_message(message)
+            result: Optional[Reply] = handle_message(message)
         except Exception:
             logger.exception("Exception happened during handling message %s", message)
             message.requeue()

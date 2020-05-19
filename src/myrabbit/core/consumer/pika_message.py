@@ -5,6 +5,8 @@ import pika
 from pika.channel import Channel
 from pika.spec import Basic
 
+from myrabbit.core.consumer.reply import Reply
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +31,7 @@ class PikaMessage:
             lambda: self.channel.basic_ack(self.basic_deliver.delivery_tag)
         )
 
-    def reply(self, body: bytes) -> None:
+    def reply(self, reply: Reply) -> None:
         if not self.properties.reply_to:
             raise ValueError(
                 f"Can not reply to message {self}: "
@@ -40,15 +42,18 @@ class PikaMessage:
             "Replying to %s [%s] with %s",
             self.properties.reply_to,
             self.properties.correlation_id,
-            body,
+            reply.body,
         )
 
-        properties = pika.BasicProperties(correlation_id=self.properties.correlation_id)
+        properties = reply.properties or pika.BasicProperties()
+        if properties.correlation_id is None:
+            properties.correlation_id = self.properties.correlation_id
+
         self.channel.connection.ioloop.add_callback_threadsafe(
             lambda: self.channel.basic_publish(
                 exchange="",
                 routing_key=self.properties.reply_to,
-                body=body,
+                body=reply.body,
                 properties=properties,
             )
         )
