@@ -146,18 +146,15 @@ class Consumer(object):
         self.setup_exchange(consumed_channel)
 
     def remember_channel(self, channel: ConsumedChannel):
-        LOGGER.info("Remembered channel: %s", channel)
         self._channels[int(channel.pika_channel)] = channel
 
     def forget_channel(self, channel: ConsumedChannel):
-        LOGGER.info("Forgot channel: %s", channel)
         self._channels.pop(int(channel.pika_channel), None)
 
     def add_on_channel_close_callback(self, consumed_channel: ConsumedChannel):
         """This method tells pika to call the on_channel_closed method if
         RabbitMQ unexpectedly closes the channel.
         """
-        LOGGER.info("Adding channel close callback")
         consumed_channel.pika_channel.add_on_close_callback(
             partial(self.on_channel_closed, consumed_channel=consumed_channel)
         )
@@ -311,7 +308,6 @@ class Consumer(object):
         for some reason. If RabbitMQ does cancel the consumer,
         on_consumer_cancelled will be invoked by pika.
         """
-        LOGGER.info("Adding consumer cancellation callback")
         channel.pika_channel.add_on_cancel_callback(
             partial(self.on_consumer_cancelled, channel=channel)
         )
@@ -345,11 +341,12 @@ class Consumer(object):
         is the message that was sent.
         """
         LOGGER.info(
-            "Received message # %s from %s: %s (consumer %s)",
+            "Received message #%s from %s: %s (consumer %s, corr_id: %s)",
             basic_deliver.delivery_tag,
             properties.app_id,
             body,
             channel.consumer_tag,
+            properties.correlation_id,
         )
         self._handle_message(unused_channel, basic_deliver, properties, body, channel)
 
