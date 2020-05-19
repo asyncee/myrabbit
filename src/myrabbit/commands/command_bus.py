@@ -138,10 +138,12 @@ class CommandBus:
         queue_params.setdefault(
             "name", self._default_reply_queue_name(command_destination, command_name)
         )
+        routing_key = queue_params["name"]  # Exchange is direct.
+
         exchange_params = exchange_params or {}
         exchange_params = {**self.default_exchange_params, **exchange_params}
         exchange_params.setdefault("type", "direct")
-        exchange_params.setdefault("name", "")
+        exchange_params.setdefault("name", self._exchange(command_destination))
 
         @wraps(callback)
         def deserialize_message(message: PikaMessage) -> None:
@@ -151,7 +153,7 @@ class CommandBus:
         return Listener(
             exchange=Exchange(**exchange_params),
             queue=Queue(**queue_params),
-            routing_key=command_name,
+            routing_key=routing_key,
             handle_message=deserialize_message,
         )
 

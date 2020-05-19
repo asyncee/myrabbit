@@ -38,9 +38,18 @@ class PikaMessage:
                 f"invalid 'reply_to' value: {self.properties.reply_to!r}"
             )
 
+        reply_rk = self.properties.reply_to
+        if reply_rk.startswith("amq."):
+            # Direct reply to, exchange must be default.
+            reply_exchange = ""
+        else:
+            # Reply to the exchange message come from.
+            reply_exchange = self.basic_deliver.exchange
+
         logger.info(
-            "Replying to %s [%s] with %s",
-            self.properties.reply_to,
+            "Replying to exchange %s, routing key %s [%s] with %s",
+            reply_exchange,
+            reply_rk,
             self.properties.correlation_id,
             reply.body,
         )
@@ -51,8 +60,8 @@ class PikaMessage:
 
         self.channel.connection.ioloop.add_callback_threadsafe(
             lambda: self.channel.basic_publish(
-                exchange="",
-                routing_key=self.properties.reply_to,
+                exchange=reply_exchange,
+                routing_key=reply_rk,
                 body=reply.body,
                 properties=properties,
             )
