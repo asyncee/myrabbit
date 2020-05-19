@@ -1,13 +1,15 @@
-import json
+from typing import Any
 from typing import Tuple
+
+import orjson
 
 from .serializer import ContentType
 from .serializer import Serializer
 
 
 class JsonSerializer(Serializer):
-    def serialize(self, data: dict) -> Tuple[ContentType, bytes]:
-        return "application/json", json.dumps(data).encode("utf-8")
+    def serialize(self, data: Any) -> Tuple[ContentType, bytes]:
+        return "application/json", orjson.dumps(data)
 
-    def deserialize(self, data: bytes) -> dict:
-        return json.loads(data.decode("utf-8"))
+    def deserialize(self, data: bytes) -> Any:
+        return orjson.loads(data.decode("utf-8"))
