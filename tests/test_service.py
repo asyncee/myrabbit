@@ -4,6 +4,7 @@ from typing import Callable
 
 from myrabbit import EventWithMessage
 from myrabbit.commands.command_with_message import CommandWithMessage
+from myrabbit.commands.command_with_message import ReplyWithMessage
 from myrabbit.core.consumer.consumer import Consumer
 from myrabbit.service import Service
 
@@ -56,3 +57,51 @@ def test_service_commands(
 
         message: CommandWithMessage = q.get(block=True, timeout=1)
         assert message.command == Command(name="command-for-x")
+
+
+def test_service_commands_reply(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.on_command(Command)
+    def x_handle_command(command: CommandWithMessage[Command]) -> str:
+        return "reply-from-x"
+
+    @y.on_reply("X", Command)
+    def on_reply_from_x(reply: ReplyWithMessage[Command]) -> None:
+        q.put(reply)
+
+    consumer = Consumer(rmq_url, x.listeners)
+    with run_consumer(consumer):
+        y.send("X", Command(name="test"))
+
+        message: ReplyWithMessage = q.get(block=True, timeout=1)
+        assert message.reply == "reply-from-x"
+
+
+def test_service_commands_reply_custom_queue(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.on_command(Command)
+    def x_handle_command(command: CommandWithMessage[Command]) -> str:
+        return "another-reply-from-x"
+
+    @y.on_reply("X", Command, listen_on="my-custom-reply-queue")
+    def on_reply_from_x(reply: ReplyWithMessage[Command]) -> None:
+        q.put(reply)
+
+    consumer = Consumer(rmq_url, x.listeners)
+    with run_consumer(consumer):
+        y.send("X", Command(name="test"), reply_to="my-custom-reply-queue")
+
+        message: ReplyWithMessage = q.get(block=True, timeout=1)
+        assert message.reply == "another-reply-from-x"
