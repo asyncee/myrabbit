@@ -34,10 +34,10 @@ class Listener:
     auto_ack: bool = False
     handle_message_strategy: Optional[strategy.HandleMessageStrategy] = None
 
-    def handle(self, message: PikaMessage):
-        strategy = self._get_strategy()
-        logger.info("Handling message with %s strategy", strategy)
-        strategy(self.handle_message, message)
+    def handle(self, message: PikaMessage) -> None:
+        execute_strategy = self._get_strategy()
+        logger.info("Handling message with %s strategy", execute_strategy)
+        execute_strategy(self.handle_message, message)  # type: ignore
 
     def _get_strategy(self) -> strategy.HandleMessageStrategy:
         if self.handle_message_strategy:

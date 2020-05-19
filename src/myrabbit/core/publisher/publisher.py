@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from types import TracebackType
+from typing import Any
+from typing import Generator
 from typing import Optional
+from typing import Type
 
 import pika
 from pika import BasicProperties
@@ -45,12 +49,17 @@ class Publisher:
     def __enter__(self) -> Publisher:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[Exception]],
+        exc_val: Optional[Any],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         self.close()
 
 
 @contextmanager
-def make_publisher(amqp_url: str):
+def make_publisher(amqp_url: str) -> Generator[Publisher, None, None]:
     with pika.BlockingConnection(URLParameters(amqp_url)) as conn:
         with Publisher(conn) as p:
             yield p

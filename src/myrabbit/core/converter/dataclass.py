@@ -15,7 +15,7 @@ class DataclassConverter(Converter):
         return model.__name__
 
     def instantiate(self, model_class: Type[T], body: dict) -> T:
-        return model_class(**body)
+        return model_class(**body)  # type: ignore
 
     def accepts(self, model: T) -> bool:
         return is_dataclass(model)

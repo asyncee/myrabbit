@@ -20,4 +20,4 @@ class Converter(abc.ABC):
         pass
 
     def instantiate(self, model_class: Type[T], body: dict) -> T:
-        return model_class(**body)
+        return model_class(**body)  # type: ignore
