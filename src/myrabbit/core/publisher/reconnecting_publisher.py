@@ -11,6 +11,8 @@ class ReconnectingPublisherFactory:
         self._publisher_connection: Optional[pika.BlockingConnection] = None
 
     def get_connection(self) -> pika.BlockingConnection:
+        # TODO: implement reconnect on expected exceptions
+        #   and reconnection strategy (block, retry times, delays).
         parameters = pika.URLParameters(self._amqp_url)
 
         if self._publisher_connection is None or self._publisher_connection.is_closed:
