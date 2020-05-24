@@ -242,7 +242,7 @@ class Consumer(object):
             return
 
         logger.info(
-            "Binding %s to %s with %s",
+            "Binding %s to %s with routing key %s",
             channel.exchange,
             channel.queue,
             channel.listener.routing_key,
@@ -456,3 +456,7 @@ class ThreadedConsumer(Consumer):
             channel.listener.handle,
             PikaMessage(unused_channel, basic_deliver, properties, body),
         )
+
+    def stop(self) -> None:
+        super().stop()
+        self._executor.shutdown()
