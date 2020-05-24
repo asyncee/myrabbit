@@ -26,7 +26,7 @@ def test_run_services(rmq_url: str, make_service: Callable):
         # stub
         pass
 
-    with mock.patch("myrabbit.runner.Consumer") as m:
+    with mock.patch("myrabbit.runner.ReconnectingConsumer") as m:
         run_services(rmq_url, a, b)
         assert m.called_with(rmq_url, a.listeners + b.listeners)
         assert m.run.called_once()

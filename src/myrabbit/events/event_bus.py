@@ -2,15 +2,13 @@ from functools import wraps
 from typing import Callable
 from typing import Optional
 
-import pika
 from pika import BasicProperties
-from pika import URLParameters
 
 from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
-from myrabbit.core.publisher.publisher import Publisher
+from myrabbit.core.publisher.reconnecting_publisher import ReconnectingPublisherFactory
 from myrabbit.core.serializer import JsonSerializer
 from myrabbit.core.serializer import Serializer
 from myrabbit.events.event_with_message import EventWithMessage
@@ -30,8 +28,7 @@ class EventBus:
         self._serializer: Serializer = serializer or JsonSerializer()
         self.default_exchange_params = default_exchange_params or {}
         self.default_queue_params = default_queue_params or {}
-
-        self._publisher_connection = pika.BlockingConnection(URLParameters(amqp_url))
+        self._publisher_factory = ReconnectingPublisherFactory(self._amqp_url)
 
     def publish(
         self,
@@ -46,7 +43,7 @@ class EventBus:
         content_type, binary_body = self._serializer.serialize(body)
         properties.content_type = content_type
 
-        with Publisher(self._publisher_connection) as publisher:
+        with self._publisher_factory.publisher() as publisher:
             publisher.publish(
                 self._exchange(event_source),
                 self._routing_key(event_name),

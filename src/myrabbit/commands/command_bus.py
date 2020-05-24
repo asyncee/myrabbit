@@ -20,6 +20,7 @@ from myrabbit.core.consumer.listener import Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.consumer.reply import Reply
 from myrabbit.core.publisher.publisher import Publisher
+from myrabbit.core.publisher.reconnecting_publisher import ReconnectingPublisherFactory
 from myrabbit.core.serializer import JsonSerializer
 from myrabbit.core.serializer import Serializer
 
@@ -38,8 +39,7 @@ class CommandBus:
         self._serializer: Serializer = serializer or JsonSerializer()
         self.default_exchange_params = default_exchange_params or {}
         self.default_queue_params = default_queue_params or {}
-
-        self._publisher_connection = pika.BlockingConnection(URLParameters(amqp_url))
+        self._publisher_factory = ReconnectingPublisherFactory(self._amqp_url)
 
     def send(
         self,
@@ -64,7 +64,7 @@ class CommandBus:
         if properties.correlation_id is None:
             properties.correlation_id = uuid.uuid4().hex
 
-        with Publisher(self._publisher_connection) as publisher:
+        with self._publisher_factory.publisher() as publisher:
             publisher.publish(
                 self._exchange(command_destination),
                 self._routing_key(command_name),
