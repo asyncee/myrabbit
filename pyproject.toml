@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "myrabbit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python library for microservice messaging via RabbitMq"
 authors = ['asyncee']
 packages = [
@@ -11,7 +11,6 @@ packages = [
 python = "^3.7"
 pika = "^1.1"
 pydantic = "^1.4"
-inflection = "^0.3.1"
 orjson = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
