@@ -18,4 +18,7 @@ class PydanticConverter(Converter):
         return model_class(**body)  # type: ignore
 
     def accepts(self, model: T) -> bool:
-        return isinstance(model, BaseModel) or issubclass(model, BaseModel)  # type: ignore
+        try:
+            return isinstance(model, BaseModel) or issubclass(model, BaseModel)  # type: ignore
+        except TypeError:
+            return False
