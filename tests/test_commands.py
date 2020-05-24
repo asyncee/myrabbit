@@ -35,7 +35,9 @@ def test_command_bus(
     consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer):
-        command_bus.send("payments", "CapturePayment", {"payment_id": 1})
+        command_bus.send(
+            "test-command-bus", "payments", "CapturePayment", {"payment_id": 1}
+        )
 
         message = q.get(block=True, timeout=1)
         assert isinstance(message, CommandWithMessage)
@@ -45,6 +47,7 @@ def test_command_bus(
 def test_command_bus_reply_listener(
     rmq_url: str, run_consumer: Callable, command_bus: CommandBus
 ) -> None:
+    command_source = "test_command_bus_reply_listener"
     q: queue.Queue = queue.Queue()
 
     def callback(msg: CommandWithMessage[dict]) -> Any:
@@ -56,13 +59,16 @@ def test_command_bus_reply_listener(
 
     listeners = [
         command_bus.listener("replies-1", "reply_to_me", callback),
-        command_bus.reply_listener("replies-1", "reply_to_me", reply_callback),
+        command_bus.reply_listener(
+            command_source, "replies-1", "reply_to_me", reply_callback,
+        ),
     ]
 
     consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer):
         command_bus.send(
+            command_source,
             "replies-1",
             "reply_to_me",
             {"this-message-will-be-sent-as-reply": "this-is-reply"},
@@ -88,6 +94,7 @@ def test_command_bus_reply_listener(
 def test_command_bus_custom_reply_queue(
     rmq_url: str, run_consumer: Callable, command_bus: CommandBus
 ) -> None:
+    cmd_source = "test_command_bus_custom_reply_queue"
     dest = "test-custom-reply-queue"
     reply_dest = dest + "-reply"
     q: queue.Queue = queue.Queue()
@@ -102,7 +109,7 @@ def test_command_bus_custom_reply_queue(
     listeners = [
         command_bus.listener(dest, "command", send_reply),
         command_bus.reply_listener(
-            dest, "command", on_reply, queue_params={"name": reply_dest}
+            cmd_source, dest, "command", on_reply, queue_params={"name": reply_dest}
         ),
     ]
 
@@ -110,6 +117,7 @@ def test_command_bus_custom_reply_queue(
 
     with run_consumer(consumer):
         command_bus.send(
+            cmd_source,
             dest,
             "command",
             {"body": True},
@@ -128,6 +136,7 @@ def test_command_bus_custom_reply_queue(
 def test_command_bus_reply_types(
     rmq_url: str, run_consumer: Callable, command_bus: CommandBus
 ) -> None:
+    cmd_source = "test_command_bus_reply_types"
     q: queue.Queue = queue.Queue()
 
     # Reply type: (Reply sent, Reply received, Reply outcome, Reply type)
@@ -162,14 +171,18 @@ def test_command_bus_reply_types(
 
     listeners = [
         command_bus.listener("replies", "reply_to_me", send_reply),
-        command_bus.reply_listener("replies", "reply_to_me", reply_callback),
+        command_bus.reply_listener(
+            cmd_source, "replies", "reply_to_me", reply_callback
+        ),
     ]
 
     consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer):
         for reply_type, expectation in replies.items():
-            command_bus.send("replies", "reply_to_me", {"reply_type": reply_type})
+            command_bus.send(
+                cmd_source, "replies", "reply_to_me", {"reply_type": reply_type}
+            )
             _, received, outcome, type_ = expectation
 
             message = q.get(block=True, timeout=1)
@@ -189,6 +202,7 @@ def test_command_bus_reply_types(
 def test_command_adapter(
     rmq_url: str, run_consumer: Callable, command_bus_adapter: CommandBusAdapter
 ) -> None:
+    cmd_source = "test_command_adapter"
     q: queue.Queue = queue.Queue()
 
     @dataclass
@@ -214,8 +228,8 @@ def test_command_adapter(
     pydantic_command = PydanticCommand(name="pydantic-command")
 
     with run_consumer(consumer):
-        command_bus_adapter.send("test_command_adapter", dataclass_command)
-        command_bus_adapter.send("test_command_adapter", pydantic_command)
+        command_bus_adapter.send(cmd_source, "test_command_adapter", dataclass_command)
+        command_bus_adapter.send(cmd_source, "test_command_adapter", pydantic_command)
 
         message = q.get(block=True, timeout=1)
         assert isinstance(message.command, (DataclassCommand, PydanticCommand))

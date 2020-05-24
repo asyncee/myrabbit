@@ -19,6 +19,11 @@ class Command:
     name: str
 
 
+@dataclass
+class CommandReply:
+    reply_name: str
+
+
 def test_service_events(
     make_service: Callable, run_consumer: Callable, rmq_url: str
 ) -> None:
@@ -59,7 +64,31 @@ def test_service_commands(
         assert message.command == Command(name="command-for-x")
 
 
-def test_service_commands_reply(
+def test_service_commands_reply_dataclass(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.on_command(Command)
+    def x_handle_command(command: CommandWithMessage[Command]) -> CommandReply:
+        return CommandReply(reply_name="reply-from-x")
+
+    @y.on_command_reply("X", Command, CommandReply)
+    def on_reply_from_x(reply: ReplyWithMessage[Command]) -> None:
+        q.put(reply)
+
+    consumer = Consumer(rmq_url, x.listeners + y.listeners)
+    with run_consumer(consumer):
+        y.send("X", Command(name="test"))
+
+        message: ReplyWithMessage = q.get(block=True, timeout=1)
+        assert message.reply == CommandReply("reply-from-x")
+
+
+def test_service_commands_reply_string(
     make_service: Callable, run_consumer: Callable, rmq_url: str
 ) -> None:
     q: queue.Queue = queue.Queue()
@@ -69,18 +98,18 @@ def test_service_commands_reply(
 
     @x.on_command(Command)
     def x_handle_command(command: CommandWithMessage[Command]) -> str:
-        return "reply-from-x"
+        return "string-reply"
 
-    @y.on_reply("X", Command)
+    @y.on_command_reply("X", Command)
     def on_reply_from_x(reply: ReplyWithMessage[Command]) -> None:
         q.put(reply)
 
-    consumer = Consumer(rmq_url, x.listeners)
+    consumer = Consumer(rmq_url, x.listeners + y.listeners)
     with run_consumer(consumer):
         y.send("X", Command(name="test"))
 
         message: ReplyWithMessage = q.get(block=True, timeout=1)
-        assert message.reply == "reply-from-x"
+        assert message.reply == "string-reply"
 
 
 def test_service_commands_reply_custom_queue(
@@ -95,11 +124,11 @@ def test_service_commands_reply_custom_queue(
     def x_handle_command(command: CommandWithMessage[Command]) -> str:
         return "another-reply-from-x"
 
-    @y.on_reply("X", Command, listen_on="my-custom-reply-queue")
+    @y.on_command_reply("X", Command, listen_on="my-custom-reply-queue")
     def on_reply_from_x(reply: ReplyWithMessage[Command]) -> None:
         q.put(reply)
 
-    consumer = Consumer(rmq_url, x.listeners)
+    consumer = Consumer(rmq_url, x.listeners + y.listeners)
     with run_consumer(consumer):
         y.send("X", Command(name="test"), reply_to="my-custom-reply-queue")
 

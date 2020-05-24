@@ -9,7 +9,9 @@ from myrabbit import EventBus
 from myrabbit import EventBusAdapter
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
+from myrabbit.commands.command_with_message import CommandReplyType
 from myrabbit.commands.command_with_message import CommandType
+from myrabbit.commands.command_with_message import ReplyWithMessage
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.listen_event_strategy import ListenEventStrategy
@@ -51,10 +53,16 @@ class Service:
         command_destination: str,
         command: CommandType,
         properties: Optional[BasicProperties] = None,
+        reply_to: Optional[str] = None,
     ) -> None:
         properties = properties or BasicProperties()
         properties.app_id = self.service_name
+
+        if reply_to is not None:
+            properties.reply_to = reply_to
+
         self._command_bus_adapter.send(
+            self.service_name,
             command_destination=command_destination,
             command=command,
             properties=properties,
@@ -98,6 +106,37 @@ class Service:
                     command_destination=self.service_name,
                     command_type=command_type,
                     callback=fn,
+                    exchange_params=exchange_params,
+                    queue_params=queue_params,
+                )
+            )
+            return fn
+
+        return register_command_listener
+
+    def on_command_reply(
+        self,
+        command_destination: str,
+        command_type: Type[CommandType],
+        reply_type: Optional[Type[CommandReplyType]] = None,
+        listen_on: Optional[str] = None,
+        exchange_params: Optional[dict] = None,
+        queue_params: Optional[dict] = None,
+    ) -> Callable:
+        if listen_on:
+            queue_params = queue_params or {}
+            queue_params["name"] = listen_on
+
+        def register_command_listener(
+            fn: Callable[[ReplyWithMessage], None]
+        ) -> Callable:
+            self._listeners.append(
+                self._command_bus_adapter.reply_listener(
+                    command_sender=self.service_name,
+                    command_destination=command_destination,
+                    command_type=command_type,
+                    callback=fn,
+                    reply_type=reply_type,
                     exchange_params=exchange_params,
                     queue_params=queue_params,
                 )

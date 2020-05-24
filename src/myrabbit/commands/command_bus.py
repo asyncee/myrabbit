@@ -43,6 +43,7 @@ class CommandBus:
 
     def send(
         self,
+        command_sender: str,
         command_destination: str,
         command_name: str,
         body: Optional[dict] = None,
@@ -57,7 +58,7 @@ class CommandBus:
 
         if properties.reply_to is None:
             properties.reply_to = self._default_reply_queue_name(
-                command_destination, command_name
+                command_sender, command_destination, command_name
             )
 
         if properties.correlation_id is None:
@@ -95,7 +96,7 @@ class CommandBus:
             message: PikaMessage,
         ) -> Optional[Reply]:
             try:
-                callback_result = callback(
+                callback_result: Optional[Union[CommandReply, Any]] = callback(
                     CommandWithMessage(
                         self._serializer.deserialize(message.body), message
                     )
@@ -127,6 +128,7 @@ class CommandBus:
 
     def reply_listener(
         self,
+        command_sender: str,
         command_destination: str,
         command_name: str,
         callback: Callable[[ReplyWithMessage], None],
@@ -136,7 +138,10 @@ class CommandBus:
         queue_params = queue_params or {}
         queue_params = {**self.default_queue_params, **queue_params}
         queue_params.setdefault(
-            "name", self._default_reply_queue_name(command_destination, command_name)
+            "name",
+            self._default_reply_queue_name(
+                command_sender, command_destination, command_name
+            ),
         )
         routing_key = queue_params["name"]  # Exchange is direct.
 
@@ -164,6 +169,8 @@ class CommandBus:
         return command_name
 
     def _default_reply_queue_name(
-        self, command_destination: str, command_name: str
+        self, command_sender: str, command_destination: str, command_name: str
     ) -> str:
-        return f"{command_destination}.{command_name}.reply"
+        return (
+            f"{command_sender}.listen-reply-from:{command_destination}.{command_name}"
+        )
