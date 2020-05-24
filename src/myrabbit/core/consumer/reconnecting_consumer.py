@@ -1,9 +1,8 @@
 import logging
 import time
-from typing import List
+from typing import Type
 
 from myrabbit.core.consumer.consumer import Consumer
-from myrabbit.core.consumer.listener import Listener
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +12,16 @@ class ReconnectingConsumer:
     Consumer that automatically reconnects with increasing delay.
     """
 
-    def __init__(self, amqp_url: str, listeners: List[Listener]) -> None:
+    def __init__(self, consumer_cls: Type[Consumer], consumer_kwargs: dict) -> None:
         self._reconnect_delay = 0
-        self._amqp_url = amqp_url
-        self.listeners = listeners
+        self._consumer_cls = consumer_cls
+        self._consumer_kwargs = consumer_kwargs
 
-        self._consumer = Consumer(self._amqp_url, self.listeners)
+        self._consumer = self.make_consumer()
         self._should_run = True
+
+    def make_consumer(self) -> Consumer:
+        return self._consumer_cls(**self._consumer_kwargs)
 
     def run(self) -> None:
         while self._should_run:
@@ -40,7 +42,7 @@ class ReconnectingConsumer:
             reconnect_delay = self._get_reconnect_delay()
             logger.info("Reconnecting after %d seconds", reconnect_delay)
             time.sleep(reconnect_delay)
-            self._consumer = Consumer(self._amqp_url, self.listeners)
+            self._consumer = self.make_consumer()
 
     def _get_reconnect_delay(self) -> int:
         if self._consumer.was_consuming:
