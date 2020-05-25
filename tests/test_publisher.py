@@ -12,6 +12,7 @@ from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.listener import Queue as Q
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.consumer.reply import Reply
+from myrabbit.core.publisher import Publisher
 from myrabbit.core.publisher import make_publisher
 
 logger = logging.getLogger(__name__)
@@ -126,3 +127,9 @@ def test_publisher_rpc_with_direct_reply_timeout_but_message_replied_faster(
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
         response = publisher.rpc(exchange, "test", b"xxx", timeout=10)
         assert response.body == b"xxx-reply"
+
+
+def test_publisher_does_not_fail_if_exchange_does_not_exist(rmq_url: str) -> None:
+    publisher: Publisher
+    with make_publisher(rmq_url) as publisher:
+        publisher.publish("i-do-not-exist", "some-routing-key", b'nothing')

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
+from functools import wraps
 from types import TracebackType
 from typing import Any
+from typing import Callable
 from typing import Generator
 from typing import Optional
 from typing import Type
@@ -10,16 +13,38 @@ from typing import Type
 import pika
 from pika import BasicProperties
 from pika import URLParameters
+from pika.adapters.blocking_connection import BlockingChannel
+from pika.exceptions import ChannelClosedByBroker
 
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.publisher.rpc import rpc
+
+logger = logging.getLogger(__name__)
 
 
 class Publisher:
     def __init__(self, connection: pika.BlockingConnection):
         self._connection = connection
-        self._channel = self._connection.channel()
+        self._channel: BlockingChannel = self._connection.channel()
 
+    @staticmethod
+    def ignore_missing_exchange(fn: Callable) -> Callable:
+        @wraps(fn)
+        def handle(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return fn(*args, **kwargs)
+            except ChannelClosedByBroker as e:
+                if int(e.reply_code) == 404:
+                    logger.error(
+                        "Can not publish message because exchange does not exist: %s %s",
+                        e.reply_code,
+                        e.reply_text,
+                    )
+                else:
+                    raise
+        return handle
+
+    @ignore_missing_exchange
     def publish(
         self,
         exchange: str,
@@ -31,6 +56,7 @@ class Publisher:
             exchange, routing_key, message, properties,
         )
 
+    @ignore_missing_exchange
     def close(self) -> None:
         self._channel.close()
         self._connection.close()
