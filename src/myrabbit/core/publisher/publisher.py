@@ -22,27 +22,28 @@ from myrabbit.core.publisher.rpc import rpc
 logger = logging.getLogger(__name__)
 
 
+def ignore_missing_exchange(fn: Callable) -> Callable:
+    @wraps(fn)
+    def handle(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except ChannelClosedByBroker as e:
+            if int(e.reply_code) == 404:
+                logger.error(
+                    "Can not publish message because exchange does not exist: %s %s",
+                    e.reply_code,
+                    e.reply_text,
+                )
+            else:
+                raise
+
+    return handle
+
+
 class Publisher:
     def __init__(self, connection: pika.BlockingConnection):
         self._connection = connection
         self._channel: BlockingChannel = self._connection.channel()
-
-    @staticmethod
-    def ignore_missing_exchange(fn: Callable) -> Callable:
-        @wraps(fn)
-        def handle(*args: Any, **kwargs: Any) -> Any:
-            try:
-                return fn(*args, **kwargs)
-            except ChannelClosedByBroker as e:
-                if int(e.reply_code) == 404:
-                    logger.error(
-                        "Can not publish message because exchange does not exist: %s %s",
-                        e.reply_code,
-                        e.reply_text,
-                    )
-                else:
-                    raise
-        return handle
 
     @ignore_missing_exchange
     def publish(
