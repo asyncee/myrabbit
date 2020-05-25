@@ -33,6 +33,7 @@ class Publisher:
 
     def close(self) -> None:
         self._channel.close()
+        self._connection.close()
 
     def rpc(
         self,
