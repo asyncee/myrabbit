@@ -14,6 +14,7 @@ from myrabbit.core.serializer import Serializer
 from myrabbit.events.event_with_message import EventWithMessage
 from myrabbit.events.listen_event_strategy.base import ListenEventStrategy
 from myrabbit.events.listen_event_strategy.service_pool import ServicePool
+from myrabbit.utils.functions import get_method_name
 
 
 class EventBus:
@@ -64,7 +65,7 @@ class EventBus:
     ) -> Listener:
         listen_strategy = listen_strategy or ServicePool()
 
-        method_name = method_name or getattr(callback, __name__, None) or repr(callback)
+        method_name = get_method_name(method_name, callback)
 
         queue_params = queue_params or {}
         queue_params = {**self.default_queue_params, **queue_params}
