@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any
 
 from myrabbit import EventBus
@@ -12,10 +13,13 @@ def test_get_method_name() -> None:
         def __call__(self) -> None:  # noqa
             pass
 
-    assert get_method_name(None, inner_func) == 'inner_func'
-    assert get_method_name(None, TestCallback()) == 'TestCallback'
-    assert get_method_name('one', inner_func) == 'one'
-    assert get_method_name('two', TestCallback()) == 'two'
+    part = partial(inner_func)
+
+    assert get_method_name(None, part) == "inner_func"
+    assert get_method_name(None, inner_func) == "inner_func"
+    assert get_method_name(None, TestCallback()) == "TestCallback"
+    assert get_method_name("one", inner_func) == "one"
+    assert get_method_name("two", TestCallback()) == "two"
 
 
 def test_queue_name(event_bus: EventBus) -> None:
