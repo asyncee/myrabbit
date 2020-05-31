@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from typing import Callable
 
 from myrabbit import EventWithMessage
-from myrabbit.commands.command_with_message import CommandWithMessage
-from myrabbit.commands.command_with_message import ReplyWithMessage
+from myrabbit.commands.command_with_message import CommandWithMessage, ReplyWithMessage
 from myrabbit.core.consumer.consumer import Consumer
+from myrabbit.core.consumer.listener import Listener
+from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.service import Service
 
 
@@ -134,3 +135,35 @@ def test_service_commands_reply_custom_queue(
 
         message: ReplyWithMessage = q.get(block=True, timeout=1)
         assert message.reply == "another-reply-from-x"
+
+
+def test_service_callbacks(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.before_request
+    def x_before_request(listener: Listener, message: PikaMessage) -> None:
+        q.put("x_before_request")
+
+    @x.after_request
+    def x_after_request(listener: Listener, message: PikaMessage) -> None:
+        q.put("x_after_request")
+
+    @x.on_event("Y", YEvent)
+    def handle_y_event(event: EventWithMessage[YEvent]) -> None:
+        q.put(event)
+
+    consumer = Consumer(rmq_url, x.listeners)
+    with run_consumer(consumer):
+        y.publish(YEvent(name="y-service-event"))
+
+        assert q.get(block=True, timeout=1) == "x_before_request"
+
+        message: EventWithMessage = q.get()
+        assert message.event == YEvent(name="y-service-event")
+
+        assert q.get(block=True, timeout=1) == "x_after_request"

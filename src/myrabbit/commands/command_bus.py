@@ -1,28 +1,21 @@
 import logging
 import uuid
 from functools import wraps
-from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Union
+from typing import Any, Callable, Optional, Union
 
-import pika
 from pika import BasicProperties
-from pika import URLParameters
 
 from myrabbit.commands import command_outcome
 from myrabbit.commands.command_outcome import CommandReply
-from myrabbit.commands.command_with_message import CommandWithMessage
-from myrabbit.commands.command_with_message import ReplyWithMessage
-from myrabbit.core.consumer.listener import Exchange
-from myrabbit.core.consumer.listener import Listener
-from myrabbit.core.consumer.listener import Queue
+from myrabbit.commands.command_with_message import (CommandWithMessage,
+                                                    ReplyWithMessage)
+from myrabbit.core.consumer.callbacks import Callbacks
+from myrabbit.core.consumer.listener import Exchange, Listener, Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.consumer.reply import Reply
-from myrabbit.core.publisher.publisher import Publisher
-from myrabbit.core.publisher.reconnecting_publisher import ReconnectingPublisherFactory
-from myrabbit.core.serializer import JsonSerializer
-from myrabbit.core.serializer import Serializer
+from myrabbit.core.publisher.reconnecting_publisher import \
+    ReconnectingPublisherFactory
+from myrabbit.core.serializer import JsonSerializer, Serializer
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +27,17 @@ class CommandBus:
         serializer: Optional[Serializer] = None,
         default_exchange_params: Optional[dict] = None,
         default_queue_params: Optional[dict] = None,
+        callbacks: Optional[Callbacks] = None,
     ):
         self._amqp_url = amqp_url
         self._serializer: Serializer = serializer or JsonSerializer()
         self.default_exchange_params = default_exchange_params or {}
         self.default_queue_params = default_queue_params or {}
         self._publisher_factory = ReconnectingPublisherFactory(self._amqp_url)
+        self._callbacks = callbacks
+
+    def set_callbacks(self, callbacks: Callbacks) -> None:
+        self._callbacks = callbacks
 
     def send(
         self,
@@ -124,6 +122,7 @@ class CommandBus:
             queue=Queue(**queue_params),
             routing_key=self._routing_key(command_name),
             handle_message=deserialize_command_and_handle_reply,
+            callbacks=self._callbacks,
         )
 
     def reply_listener(
@@ -160,6 +159,7 @@ class CommandBus:
             queue=Queue(**queue_params),
             routing_key=routing_key,
             handle_message=deserialize_message,
+            callbacks=self._callbacks,
         )
 
     def _exchange(self, command_destination: str) -> str:

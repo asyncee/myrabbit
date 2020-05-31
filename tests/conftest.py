@@ -8,13 +8,12 @@ from typing import Callable
 import pytest
 import requests
 
-from myrabbit import EventBus
-from myrabbit import EventBusAdapter
-from myrabbit import Service
+from myrabbit import EventBus, EventBusAdapter, Service
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
 from myrabbit.core.consumer.consumer import Consumer
-from .logging import setup_logging
+
+from .setup_logging import setup_logging
 
 logger = logging.getLogger(__name__)
 setup_logging()

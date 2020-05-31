@@ -1,17 +1,16 @@
-from typing import Callable
-from typing import List
-from typing import Optional
-from typing import Type
+from typing import Callable, List, Optional, Type
 
 from pika import BasicProperties
 
-from myrabbit import EventBus
-from myrabbit import EventBusAdapter
+from myrabbit import EventBus, EventBusAdapter
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
-from myrabbit.commands.command_with_message import CommandReplyType
-from myrabbit.commands.command_with_message import CommandType
-from myrabbit.commands.command_with_message import ReplyWithMessage
+from myrabbit.commands.command_with_message import (
+    CommandReplyType,
+    CommandType,
+    ReplyWithMessage,
+)
+from myrabbit.core.consumer.callbacks import Callback, Callbacks
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.listen_event_strategy import ListenEventStrategy
@@ -25,7 +24,23 @@ class Service:
         self._command_bus = command_bus
         self._command_bus_adapter = self._make_command_bus_adapter(command_bus)
 
+        self._callbacks = Callbacks()
+        # Override callbacks for event bus and command bus.
+        # Because callbacks is mutable, instantiated listeners will
+        # receive newly added callbacks.
+        # This is ugly solution and right approach is to use Composite
+        # pattern for `Callbacks` or Builder for `Service`.
+        self._event_bus.set_callbacks(self._callbacks)
+        self._command_bus.set_callbacks(self._callbacks)
         self._listeners: List[Listener] = []
+
+    def before_request(self, fn: Callback) -> Callback:
+        self._callbacks.add_callback("before_request", fn)
+        return fn
+
+    def after_request(self, fn: Callback) -> Callback:
+        self._callbacks.add_callback("after_request", fn)
+        return fn
 
     @property
     def event_bus(self) -> EventBus:
