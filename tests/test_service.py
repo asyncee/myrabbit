@@ -2,6 +2,8 @@ import queue
 from dataclasses import dataclass
 from typing import Callable
 
+import pytest
+
 from myrabbit import EventWithMessage
 from myrabbit.commands.command_with_message import CommandWithMessage, ReplyWithMessage
 from myrabbit.core.consumer.consumer import Consumer
@@ -167,3 +169,82 @@ def test_service_callbacks(
         assert message.event == YEvent(name="y-service-event")
 
         assert q.get(block=True, timeout=1) == "x_after_request"
+
+
+def test_service_middleware(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.middleware
+    def x_before_request(listener: Listener, message: PikaMessage) -> None:
+        q.put("x_before_request")
+        yield
+        q.put("x_after_request")
+
+    @x.on_event("Y", YEvent)
+    def handle_y_event(event: EventWithMessage[YEvent]) -> None:
+        q.put(event)
+
+    consumer = Consumer(rmq_url, x.listeners)
+    with run_consumer(consumer):
+        y.publish(YEvent(name="y-service-event"))
+
+        assert q.get(block=True, timeout=1) == "x_before_request"
+
+        message: EventWithMessage = q.get()
+        assert message.event == YEvent(name="y-service-event")
+
+        assert q.get(block=True, timeout=1) == "x_after_request"
+
+
+def test_service_middleware_exception(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.middleware
+    def x_before_request_1(listener: Listener, message: PikaMessage) -> None:
+        q.put("x_before_request_1")
+        try:
+            yield
+        finally:
+            # This will be executed regardless of any exception in underlying middleware
+            # (RuntimeException).
+            q.put("x_after_request_1")
+
+    @x.middleware
+    def x_before_request_2(listener: Listener, message: PikaMessage) -> None:
+        q.put("x_before_request_2")
+        yield
+        raise RuntimeError
+        # This line will not be executed because of RuntimeError.
+        q.put("x_after_request_2")
+
+    @x.on_event("Y", YEvent)
+    def handle_y_event(event: EventWithMessage[YEvent]) -> None:
+        q.put(event)
+
+    consumer = Consumer(rmq_url, x.listeners)
+    with run_consumer(consumer):
+        y.publish(YEvent(name="y-service-event"))
+
+        assert q.get(block=True, timeout=1) == "x_before_request_1"
+        assert q.get() == "x_before_request_2"
+
+        message: EventWithMessage = q.get()
+        assert message.event == YEvent(name="y-service-event")
+
+        # x_after_request_2 should be there but because of exception
+        # the code was not executed and next middleware layer gained control.
+
+        assert q.get(block=True, timeout=1) == "x_after_request_1"
+
+        with pytest.raises(queue.Empty):
+            q.get(block=False)

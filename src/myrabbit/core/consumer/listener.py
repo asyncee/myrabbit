@@ -41,7 +41,8 @@ class Listener:
         self._callbacks().before_request(message)
         execute_strategy = self._get_strategy()
         logger.info("Handling message with %s strategy", execute_strategy)
-        execute_strategy(self.handle_message, message)  # type: ignore
+        with self._callbacks().run_middleware(message):
+            execute_strategy(self.handle_message, message)  # type: ignore
         self._callbacks().after_request(message)
 
     def _callbacks(self) -> Callbacks:

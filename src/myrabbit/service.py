@@ -5,12 +5,8 @@ from pika import BasicProperties
 from myrabbit import EventBus, EventBusAdapter
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
-from myrabbit.commands.command_with_message import (
-    CommandReplyType,
-    CommandType,
-    ReplyWithMessage,
-)
-from myrabbit.core.consumer.callbacks import Callback, Callbacks
+from myrabbit.commands.command_with_message import CommandReplyType, CommandType, ReplyWithMessage
+from myrabbit.core.consumer.callbacks import Callback, Callbacks, Middleware
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.listen_event_strategy import ListenEventStrategy
@@ -40,6 +36,10 @@ class Service:
 
     def after_request(self, fn: Callback) -> Callback:
         self._callbacks.add_callback("after_request", fn)
+        return fn
+
+    def middleware(self, fn: Middleware) -> Middleware:
+        self._callbacks.add_callback("middleware", fn)
         return fn
 
     @property
