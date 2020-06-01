@@ -2,18 +2,14 @@ import functools
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from functools import partial
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import pika
 from pika import SelectConnection
 from pika.adapters.asyncio_connection import AsyncioConnection
 from pika.channel import Channel
 from pika.connection import Connection
-from pika.spec import Basic
-from pika.spec import Exchange
-from pika.spec import Queue
+from pika.spec import Basic, Exchange, Queue
 
 from myrabbit.core.consumer.channel import ConsumedChannel
 from myrabbit.core.consumer.listener import Listener
@@ -452,9 +448,21 @@ class ThreadedConsumer(Consumer):
         body: bytes,
         channel: ConsumedChannel,
     ) -> None:
+        def log_exceptions(fn: Callable, *args: Any, **kwargs: Any) -> None:
+            try:
+                fn(*args, **kwargs)
+            except Exception:
+                logger.exception(
+                    "Exception happened while handling a message. Listener: %s, properties: %s",
+                    channel.listener,
+                    properties,
+                )
+
         self._executor.submit(
-            channel.listener.handle,
-            PikaMessage(unused_channel, basic_deliver, properties, body),
+            log_exceptions(
+                channel.listener.handle,
+                PikaMessage(unused_channel, basic_deliver, properties, body),
+            )
         )
 
     def stop(self) -> None:
