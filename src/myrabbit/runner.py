@@ -1,23 +1,37 @@
-from typing import List
+from typing import List, Type, Union
 
-from myrabbit.core.consumer.consumer import Consumer
-from myrabbit.core.consumer.consumer import ThreadedConsumer
+from myrabbit import CommandBus, EventBus
+from myrabbit.core.consumer.consumer import Consumer, ThreadedConsumer
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.core.consumer.reconnecting_consumer import ReconnectingConsumer
+from myrabbit.core.publisher.reconnecting_publisher import ReconnectingPublisherFactory
 from myrabbit.service import Service
+from myrabbit.service_builder import ServiceBuilder
 
 
-def run_services(amqp_url: str, *services: Service) -> None:
-    listeners: List[Listener] = sum([s.listeners for s in services], [])
+def run_services(
+    amqp_url: str,
+    *services: Union[Service, ServiceBuilder],
+    consumer_cls: Type[Consumer] = ThreadedConsumer,
+) -> None:
+    factory = ReconnectingPublisherFactory(amqp_url)
+    event_bus = EventBus(factory)
+    command_bus = CommandBus(factory)
+
+    to_run = []
+    for inst in services:
+        if isinstance(inst, Service):
+            to_run.append(inst)
+        elif isinstance(inst, ServiceBuilder):
+            to_run.append(inst.build(event_bus, command_bus))
+        else:
+            raise ValueError(f"Invalid service or builder: {inst!r}")
+
+    listeners: List[Listener] = sum([s.listeners for s in to_run], [])
     consumer = ReconnectingConsumer(
-        Consumer, consumer_kwargs=dict(amqp_url=amqp_url, listeners=listeners)
+        consumer_cls, consumer_kwargs=dict(amqp_url=amqp_url, listeners=listeners)
     )
     consumer.run()
 
 
-def run_services_threaded(amqp_url: str, *services: Service) -> None:
-    listeners: List[Listener] = sum([s.listeners for s in services], [])
-    consumer = ReconnectingConsumer(
-        ThreadedConsumer, consumer_kwargs=dict(amqp_url=amqp_url, listeners=listeners)
-    )
-    consumer.run()
+run_services_threaded = run_services

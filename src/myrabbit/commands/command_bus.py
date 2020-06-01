@@ -12,10 +12,7 @@ from myrabbit.core.consumer.callbacks import Callbacks
 from myrabbit.core.consumer.listener import Exchange, Listener, Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.consumer.reply import Reply
-from myrabbit.core.publisher.reconnecting_publisher import (
-    PublisherFactory,
-    ReconnectingPublisherFactory,
-)
+from myrabbit.core.publisher.reconnecting_publisher import PublisherFactory
 from myrabbit.core.serializer import JsonSerializer, Serializer
 
 logger = logging.getLogger(__name__)

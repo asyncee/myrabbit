@@ -30,3 +30,8 @@ class Callbacks:
                 stack.enter_context(cm(self, message))
 
             return stack.pop_all()
+
+    def __eq__(self, other):
+        if not isinstance(other, Callbacks):
+            return False
+        return self._callbacks == other._callbacks
