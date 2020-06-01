@@ -1,24 +1,34 @@
-from typing import Callable, List, Optional, Type
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Type
 
 from pika import BasicProperties
 
-from myrabbit import EventBus, EventBusAdapter
+from myrabbit import EventBus
+from myrabbit import EventBusAdapter
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
-from myrabbit.commands.command_with_message import CommandReplyType, CommandType, ReplyWithMessage
-from myrabbit.core.consumer.callbacks import Callback, Callbacks, Middleware
+from myrabbit.commands.command_with_message import CommandReplyType
+from myrabbit.commands.command_with_message import CommandType
+from myrabbit.commands.command_with_message import ReplyWithMessage
+from myrabbit.core.consumer.callbacks import Callback
+from myrabbit.core.consumer.callbacks import Callbacks
+from myrabbit.core.consumer.callbacks import Middleware
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.listen_event_strategy import ListenEventStrategy
 
 
 class Service:
-    def __init__(self, service_name: str, event_bus: EventBus, command_bus: CommandBus):
+    def __init__(
+        self, service_name: str, event_bus: EventBus, command_bus: CommandBus,
+    ):
         self.service_name = service_name
         self._event_bus = event_bus
-        self._event_bus_adapter = self._make_event_bus_adapter(event_bus)
+        self._event_bus_adapter = self._make_event_bus_adapter(self._event_bus)
         self._command_bus = command_bus
-        self._command_bus_adapter = self._make_command_bus_adapter(command_bus)
+        self._command_bus_adapter = self._make_command_bus_adapter(self._command_bus)
 
         self._callbacks = Callbacks()
         # Override callbacks for event bus and command bus.

@@ -7,14 +7,15 @@ from pika import BasicProperties
 
 from myrabbit.commands import command_outcome
 from myrabbit.commands.command_outcome import CommandReply
-from myrabbit.commands.command_with_message import (CommandWithMessage,
-                                                    ReplyWithMessage)
+from myrabbit.commands.command_with_message import CommandWithMessage, ReplyWithMessage
 from myrabbit.core.consumer.callbacks import Callbacks
 from myrabbit.core.consumer.listener import Exchange, Listener, Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
 from myrabbit.core.consumer.reply import Reply
-from myrabbit.core.publisher.reconnecting_publisher import \
-    ReconnectingPublisherFactory
+from myrabbit.core.publisher.reconnecting_publisher import (
+    PublisherFactory,
+    ReconnectingPublisherFactory,
+)
 from myrabbit.core.serializer import JsonSerializer, Serializer
 
 logger = logging.getLogger(__name__)
@@ -23,17 +24,16 @@ logger = logging.getLogger(__name__)
 class CommandBus:
     def __init__(
         self,
-        amqp_url: str,
+        publisher_factory: PublisherFactory,
         serializer: Optional[Serializer] = None,
         default_exchange_params: Optional[dict] = None,
         default_queue_params: Optional[dict] = None,
         callbacks: Optional[Callbacks] = None,
     ):
-        self._amqp_url = amqp_url
+        self._publisher_factory = publisher_factory
         self._serializer: Serializer = serializer or JsonSerializer()
         self.default_exchange_params = default_exchange_params or {}
         self.default_queue_params = default_queue_params or {}
-        self._publisher_factory = ReconnectingPublisherFactory(self._amqp_url)
         self._callbacks = callbacks
 
     def set_callbacks(self, callbacks: Callbacks) -> None:

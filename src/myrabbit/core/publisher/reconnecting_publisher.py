@@ -1,25 +1,28 @@
-from typing import Optional
+import abc
 
 import pika
 
 from myrabbit.core.publisher import Publisher
 
 
-class ReconnectingPublisherFactory:
+class PublisherFactory(abc.ABC):
+    @abc.abstractmethod
+    def get_connection(self) -> pika.BlockingConnection:
+        pass
+
+    @abc.abstractmethod
+    def publisher(self) -> Publisher:
+        pass
+
+
+class ReconnectingPublisherFactory(PublisherFactory):
     def __init__(self, amqp_url: str):
         self._amqp_url = amqp_url
-        # self._publisher_connection: Optional[pika.BlockingConnection] = None
 
-    # FIXME: use existing connection.
     def get_connection(self) -> pika.BlockingConnection:
-        # TODO: implement reconnect on expected exceptions
+        # TODO: implement reconnection on expected exceptions
         #   and reconnection strategy (block, retry times, delays).
         parameters = pika.URLParameters(self._amqp_url)
-
-        # if self._publisher_connection is None or self._publisher_connection.is_closed:
-        #     self._publisher_connection = pika.BlockingConnection(parameters)
-
-        # return self._publisher_connection
         return pika.BlockingConnection(parameters)
 
     def publisher(self) -> Publisher:

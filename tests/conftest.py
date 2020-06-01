@@ -12,6 +12,10 @@ from myrabbit import EventBus, EventBusAdapter, Service
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
 from myrabbit.core.consumer.consumer import Consumer
+from myrabbit.core.publisher.reconnecting_publisher import (
+    PublisherFactory,
+    ReconnectingPublisherFactory,
+)
 
 from .setup_logging import setup_logging
 
@@ -68,8 +72,13 @@ def run_consumer(rmq_url: str) -> Callable:
 
 
 @pytest.fixture()
-def event_bus(rmq_url: str) -> EventBus:
-    return EventBus(rmq_url)
+def publisher_factory(rmq_url: str) -> PublisherFactory:
+    return ReconnectingPublisherFactory(rmq_url)
+
+
+@pytest.fixture()
+def event_bus(publisher_factory) -> EventBus:
+    return EventBus(publisher_factory)
 
 
 @pytest.fixture()
@@ -78,8 +87,8 @@ def event_bus_adapter(event_bus: EventBus) -> EventBusAdapter:
 
 
 @pytest.fixture()
-def command_bus(rmq_url: str) -> CommandBus:
-    return CommandBus(rmq_url)
+def command_bus(publisher_factory: PublisherFactory) -> CommandBus:
+    return CommandBus(publisher_factory)
 
 
 @pytest.fixture()
@@ -88,8 +97,8 @@ def command_bus_adapter(command_bus: CommandBus) -> CommandBusAdapter:
 
 
 @pytest.fixture()
-def make_service(rmq_url):
+def make_service(publisher_factory):
     def factory(name: str) -> Service:
-        return Service(name, EventBus(rmq_url), CommandBus(rmq_url))
+        return Service(name, EventBus(publisher_factory), CommandBus(publisher_factory))
 
     return factory
