@@ -11,6 +11,10 @@ test:
 benchmark:
 	pytest -s -m benchmark tests
 
+style:
+	env/bin/black src
+	cd src && ../env/bin/isort -y
+
 lint:
 	mypy src
 	flake8 src
