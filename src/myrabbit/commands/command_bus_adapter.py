@@ -1,22 +1,18 @@
 from functools import wraps
-from typing import Any
-from typing import Callable
-from typing import List
-from typing import Optional
-from typing import Type
-from typing import Union
+from typing import Any, Callable, List, Optional, Type, Union
 
 from pika import BasicProperties
 
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_outcome import CommandReply
-from myrabbit.commands.command_with_message import CommandReplyType
-from myrabbit.commands.command_with_message import CommandType
-from myrabbit.commands.command_with_message import CommandWithMessage
-from myrabbit.commands.command_with_message import ReplyWithMessage
+from myrabbit.commands.command_with_message import (
+    CommandReplyType,
+    CommandType,
+    CommandWithMessage,
+    ReplyWithMessage,
+)
 from myrabbit.core.consumer.listener import Listener
-from myrabbit.core.converter import Converter
-from myrabbit.core.converter import DEFAULT_CONVERTERS
+from myrabbit.core.converter import DEFAULT_CONVERTERS, Converter
 
 
 class CommandBusAdapter:
@@ -26,7 +22,7 @@ class CommandBusAdapter:
         self.command_bus = command_bus
         self.converters = converters or DEFAULT_CONVERTERS
 
-    def _converter(self, command: CommandType) -> Converter:
+    def get_converter(self, command: CommandType) -> Converter:
         for converter in self.converters:
             if converter.accepts(command):
                 return converter
@@ -39,7 +35,7 @@ class CommandBusAdapter:
         command: CommandType,
         properties: Optional[BasicProperties] = None,
     ) -> None:
-        command_name, body = self._converter(command).name_and_body(command)
+        command_name, body = self.get_converter(command).name_and_body(command)
         self.command_bus.send(
             command_sender, command_destination, command_name, body, properties
         )
@@ -52,7 +48,7 @@ class CommandBusAdapter:
         exchange_params: Optional[dict] = None,
         queue_params: Optional[dict] = None,
     ) -> Listener:
-        converter = self._converter(command_type)
+        converter = self.get_converter(command_type)
 
         @wraps(callback)
         def instantiate_command(
@@ -86,11 +82,11 @@ class CommandBusAdapter:
         @wraps(callback)
         def instantiate_reply(reply: ReplyWithMessage) -> None:
             if reply_type is not None:
-                converter = self._converter(reply_type)
+                converter = self.get_converter(reply_type)
                 reply.reply = converter.instantiate(reply_type, reply.reply)
             callback(reply)
 
-        command_name = self._converter(command_type).name(command_type)
+        command_name = self.get_converter(command_type).name(command_type)
 
         return self.command_bus.reply_listener(
             command_sender=command_sender,

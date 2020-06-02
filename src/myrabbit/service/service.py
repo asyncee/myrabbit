@@ -1,23 +1,16 @@
-from typing import Callable
-from typing import List
-from typing import Optional
-from typing import Type
+from typing import Callable, List, Optional, Type
 
 from pika import BasicProperties
 
-from myrabbit import EventBus
-from myrabbit import EventBusAdapter
+from myrabbit import EventBus, EventBusAdapter
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
-from myrabbit.commands.command_with_message import CommandReplyType
-from myrabbit.commands.command_with_message import CommandType
-from myrabbit.commands.command_with_message import ReplyWithMessage
-from myrabbit.core.consumer.callbacks import Callback
-from myrabbit.core.consumer.callbacks import Callbacks
-from myrabbit.core.consumer.callbacks import Middleware
+from myrabbit.commands.command_with_message import CommandReplyType, CommandType, ReplyWithMessage
+from myrabbit.core.consumer.callbacks import Callback, Callbacks, Middleware
 from myrabbit.core.consumer.listener import Listener
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.listen_event_strategy import ListenEventStrategy
+from myrabbit.service.doc import Doc
 
 
 class Service:
@@ -39,6 +32,7 @@ class Service:
         self._event_bus.set_callbacks(self._callbacks)
         self._command_bus.set_callbacks(self._callbacks)
         self._listeners: List[Listener] = []
+        self.doc = Doc()
 
     def before_request(self, fn: Callback) -> Callback:
         self._callbacks.add_callback("before_request", fn)
@@ -102,6 +96,8 @@ class Service:
         listen_strategy: Optional[ListenEventStrategy] = None,
         method_name: Optional[str] = None,
     ) -> Callable:
+        self.doc.add_event(event_source, event_type)
+
         def register_event_listener(fn: Callable) -> Callable:
             self._listeners.append(
                 self._event_bus_adapter.listener(
@@ -125,6 +121,8 @@ class Service:
         exchange_params: Optional[dict] = None,
         queue_params: Optional[dict] = None,
     ) -> Callable:
+        self.doc.add_command(command_type)
+
         def register_command_listener(fn: Callable) -> Callable:
             self._listeners.append(
                 self._command_bus_adapter.listener(
@@ -148,6 +146,8 @@ class Service:
         exchange_params: Optional[dict] = None,
         queue_params: Optional[dict] = None,
     ) -> Callable:
+        self.doc.add_command_reply(command_destination, command_type)
+
         if listen_on:
             queue_params = queue_params or {}
             queue_params["name"] = listen_on

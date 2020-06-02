@@ -1,14 +1,12 @@
 from typing import Callable, Optional, Type
 
-from myrabbit import CommandBus, EventBus, Service
-from myrabbit.commands.command_with_message import (
-    CommandReplyType,
-    CommandType,
-    ReplyWithMessage,
-)
+from myrabbit import CommandBus, EventBus
+from myrabbit.commands.command_with_message import CommandReplyType, CommandType, ReplyWithMessage
 from myrabbit.core.consumer.callbacks import Callback, Middleware
 from myrabbit.events.event_with_message import EventType
 from myrabbit.events.listen_event_strategy import ListenEventStrategy
+
+from .service import Service
 
 
 class ServiceBuilder:
