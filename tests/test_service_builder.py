@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from myrabbit import Service
-from myrabbit.service_builder import ServiceBuilder
+from myrabbit import Service, ServiceBuilder
 
 
 def get_wrapped(fn):

@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from typing import Callable
 from unittest import mock
 
-from myrabbit import EventWithMessage
-from myrabbit.runner import run_services
+from myrabbit import EventWithMessage, run_services
 from myrabbit.service import Service
 
 
@@ -26,7 +25,7 @@ def test_run_services(rmq_url: str, make_service: Callable):
         # stub
         pass
 
-    with mock.patch("myrabbit.runner.ReconnectingConsumer") as m:
+    with mock.patch("myrabbit.service.runner.ReconnectingConsumer") as m:
         run_services(rmq_url, a, b)
         assert m.called_with(rmq_url, a.listeners + b.listeners)
         assert m.run.called_once()
