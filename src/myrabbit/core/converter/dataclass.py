@@ -1,10 +1,7 @@
-from dataclasses import asdict
-from dataclasses import is_dataclass
-from typing import Tuple
-from typing import Type
+from dataclasses import asdict, is_dataclass
+from typing import Tuple, Type
 
-from .converter import Converter
-from .converter import T
+from .converter import Converter, T
 
 
 class DataclassConverter(Converter):

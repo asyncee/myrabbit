@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 from myrabbit.commands.command_outcome import CommandOutcome
 from myrabbit.commands.reply_headers import CommandReplyHeaders

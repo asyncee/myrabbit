@@ -1,2 +1,1 @@
-from .publisher import Publisher
-from .publisher import make_publisher
+from .publisher import Publisher, make_publisher

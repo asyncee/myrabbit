@@ -1,7 +1,5 @@
 import abc
-from typing import Tuple
-from typing import Type
-from typing import TypeVar
+from typing import Tuple, Type, TypeVar
 
 T = TypeVar("T")
 

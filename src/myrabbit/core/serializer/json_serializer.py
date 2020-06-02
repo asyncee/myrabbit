@@ -1,10 +1,8 @@
-from typing import Any
-from typing import Tuple
+from typing import Any, Tuple
 
 import orjson
 
-from .serializer import ContentType
-from .serializer import Serializer
+from .serializer import ContentType, Serializer
 
 
 class JsonSerializer(Serializer):

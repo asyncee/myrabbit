@@ -1,13 +1,12 @@
 import traceback
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import pika
 
-from myrabbit.core.consumer.reply import Reply
 from myrabbit.commands.reply_headers import CommandReplyHeaders
+from myrabbit.core.consumer.reply import Reply
 from myrabbit.core.serializer import Serializer
 
 

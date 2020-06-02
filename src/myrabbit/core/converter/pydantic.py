@@ -1,10 +1,8 @@
-from typing import Tuple
-from typing import Type
+from typing import Tuple, Type
 
 from pydantic import BaseModel
 
-from .converter import Converter
-from .converter import T
+from .converter import Converter, T
 
 
 class PydanticConverter(Converter):

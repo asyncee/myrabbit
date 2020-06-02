@@ -4,15 +4,10 @@ import logging
 from contextlib import contextmanager
 from functools import wraps
 from types import TracebackType
-from typing import Any
-from typing import Callable
-from typing import Generator
-from typing import Optional
-from typing import Type
+from typing import Any, Callable, Generator, Optional, Type
 
 import pika
-from pika import BasicProperties
-from pika import URLParameters
+from pika import BasicProperties, URLParameters
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.exceptions import ChannelClosedByBroker
 

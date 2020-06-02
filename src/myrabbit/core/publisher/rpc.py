@@ -6,8 +6,7 @@ import pika
 from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.channel import Channel
-from pika.exceptions import ChannelWrongStateError
-from pika.exceptions import ConnectionWrongStateError
+from pika.exceptions import ChannelWrongStateError, ConnectionWrongStateError
 from pika.spec import Basic
 
 from myrabbit.core.consumer.pika_message import PikaMessage

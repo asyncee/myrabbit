@@ -2,9 +2,7 @@ from dataclasses import dataclass
 
 from pika.channel import Channel
 
-from myrabbit.core.consumer.listener import Exchange
-from myrabbit.core.consumer.listener import Listener
-from myrabbit.core.consumer.listener import Queue
+from myrabbit.core.consumer.listener import Exchange, Listener, Queue
 
 
 @dataclass

@@ -1,7 +1,5 @@
 import abc
-from typing import Any
-from typing import Tuple
-
+from typing import Any, Tuple
 
 ContentType = str
 
