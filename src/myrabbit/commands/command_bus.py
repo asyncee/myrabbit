@@ -52,7 +52,7 @@ class CommandBus:
         properties.content_type = content_type
 
         if properties.reply_to is None:
-            properties.reply_to = self._default_reply_queue_name(
+            properties.reply_to = self.reply_queue_name(
                 command_sender, command_destination, command_name
             )
 
@@ -135,9 +135,7 @@ class CommandBus:
         queue_params = {**self.default_queue_params, **queue_params}
         queue_params.setdefault(
             "name",
-            self._default_reply_queue_name(
-                command_sender, command_destination, command_name
-            ),
+            self.reply_queue_name(command_sender, command_destination, command_name),
         )
         routing_key = queue_params["name"]  # Exchange is direct.
 
@@ -165,9 +163,7 @@ class CommandBus:
     def _routing_key(self, command_name: str) -> str:
         return command_name
 
-    def _default_reply_queue_name(
+    def reply_queue_name(
         self, command_sender: str, command_destination: str, command_name: str
     ) -> str:
-        return (
-            f"{command_sender}.listen-reply-from:{command_destination}.{command_name}"
-        )
+        return f"{command_sender}.listen-reply-to:{command_destination}.{command_name}"

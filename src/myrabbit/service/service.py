@@ -78,7 +78,11 @@ class Service:
         properties.app_id = self.service_name
 
         if reply_to is not None:
-            properties.reply_to = reply_to
+            converter = self._command_bus_adapter.get_converter(command)
+            command_name = converter.name(command.__class__)
+            properties.reply_to = self._reply_queue_name(
+                command_destination, command_name, reply_to
+            )
 
         self._command_bus_adapter.send(
             self.service_name,
@@ -150,7 +154,11 @@ class Service:
 
         if listen_on:
             queue_params = queue_params or {}
-            queue_params["name"] = listen_on
+            converter = self._command_bus_adapter.get_converter(command_type)
+            command_name = converter.name(command_type)
+            queue_params["name"] = self._reply_queue_name(
+                command_destination, command_name, listen_on
+            )
 
         def register_command_listener(
             fn: Callable[[ReplyWithMessage], None]
@@ -175,3 +183,11 @@ class Service:
 
     def _make_command_bus_adapter(self, command_bus: CommandBus) -> CommandBusAdapter:
         return CommandBusAdapter(command_bus)
+
+    def _reply_queue_name(
+        self, command_destination: str, command_name: str, queue_name: str
+    ) -> str:
+        default_name = self._command_bus.reply_queue_name(
+            self.service_name, command_destination, command_name
+        )
+        return f"{default_name}:{queue_name}"
