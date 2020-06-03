@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import traceback
 from dataclasses import dataclass
 from enum import Enum
@@ -14,6 +16,13 @@ from myrabbit.core.serializer import Serializer
 class CommandReply:
     body: Any
     properties: Optional[pika.BasicProperties] = None
+
+    def with_headers(self, headers: dict) -> CommandReply:
+        new_properties = self.properties or pika.BasicProperties()
+        new_properties.headers = new_properties.headers or {}
+        new_properties.headers.update(headers)
+
+        return CommandReply(body=self.body, properties=new_properties,)
 
     def to_reply(self, serializer: Serializer) -> Reply:
         content_type, body = serializer.serialize(self.body)

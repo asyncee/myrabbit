@@ -248,3 +248,28 @@ def test_service_middleware_exception(
 
         with pytest.raises(queue.Empty):
             q.get(block=False)
+
+
+def test_service_commands_reply_headers(
+    make_service: Callable, run_consumer: Callable, rmq_url: str
+) -> None:
+    q: queue.Queue = queue.Queue()
+
+    x: Service = make_service("X")
+    y: Service = make_service("Y")
+
+    @x.on_command(Command)
+    def x_handle_command(command: CommandWithMessage[Command]) -> str:
+        return "string-reply"
+
+    @y.on_command_reply("X", Command)
+    def on_reply_from_x(reply: ReplyWithMessage[Command]) -> None:
+        q.put(reply)
+
+    consumer = Consumer(rmq_url, x.listeners + y.listeners)
+    with run_consumer(consumer):
+        y.send("X", Command(name="test"), reply_headers={"X-Saga-Id": 100})
+
+        message: ReplyWithMessage = q.get(block=True, timeout=1)
+        assert message.reply == "string-reply"
+        assert message.message.properties.headers["X-Saga-Id"] == 100

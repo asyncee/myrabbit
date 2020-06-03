@@ -14,6 +14,9 @@ class CommandWithMessage(Generic[CommandType]):
     command: CommandType
     message: PikaMessage
 
+    def headers(self) -> dict:
+        return self.message.properties.headers
+
 
 @dataclass
 class ReplyWithMessage(Generic[CommandReplyType]):
@@ -31,3 +34,6 @@ class ReplyWithMessage(Generic[CommandReplyType]):
             CommandReplyHeaders.REPLY_OUTCOME
         ]
         return reply_outcome == CommandOutcome.FAILURE.name
+
+    def headers(self) -> dict:
+        return self.message.properties.headers

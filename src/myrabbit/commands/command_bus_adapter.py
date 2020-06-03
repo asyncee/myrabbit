@@ -34,10 +34,16 @@ class CommandBusAdapter:
         command_destination: str,
         command: CommandType,
         properties: Optional[BasicProperties] = None,
+        reply_headers: Optional[dict] = None,
     ) -> None:
         command_name, body = self.get_converter(command).name_and_body(command)
         self.command_bus.send(
-            command_sender, command_destination, command_name, body, properties
+            command_sender,
+            command_destination,
+            command_name,
+            body,
+            properties,
+            reply_headers,
         )
 
     def listener(

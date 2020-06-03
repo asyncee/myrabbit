@@ -1,9 +1,6 @@
 import queue
 from dataclasses import dataclass
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import pika
 import pytest
@@ -11,11 +8,8 @@ from pydantic import BaseModel
 
 from myrabbit.commands.command_bus import CommandBus
 from myrabbit.commands.command_bus_adapter import CommandBusAdapter
-from myrabbit.commands.command_outcome import CommandOutcome
-from myrabbit.commands.command_outcome import failure
-from myrabbit.commands.command_outcome import success
-from myrabbit.commands.command_with_message import CommandWithMessage
-from myrabbit.commands.command_with_message import ReplyWithMessage
+from myrabbit.commands.command_outcome import CommandOutcome, failure, success
+from myrabbit.commands.command_with_message import CommandWithMessage, ReplyWithMessage
 from myrabbit.commands.reply_headers import CommandReplyHeaders
 from myrabbit.core.consumer.consumer import Consumer
 
@@ -197,6 +191,51 @@ def test_command_bus_reply_types(
                 assert message.is_failure()
             else:
                 raise ValueError
+
+
+def test_command_bus_reply_headers(
+    rmq_url: str, run_consumer: Callable, command_bus: CommandBus
+) -> None:
+    command_source = "test_command_bus_reply_headers"
+    q: queue.Queue = queue.Queue()
+
+    def callback(msg: CommandWithMessage[dict]) -> Any:
+        q.put(msg)
+        return "reply"
+
+    def reply_callback(msg: ReplyWithMessage) -> None:
+        q.put(msg)
+
+    listeners = [
+        command_bus.listener("xxx", "xxx-reply_to_me", callback),
+        command_bus.reply_listener(
+            command_source, "xxx", "xxx-reply_to_me", reply_callback,
+        ),
+    ]
+
+    consumer = Consumer(rmq_url, listeners)
+
+    with run_consumer(consumer):
+        command_bus.send(
+            command_source,
+            "xxx",
+            "xxx-reply_to_me",
+            {"some": "message"},
+            reply_headers={"X-Saga-Id": 99, "X-Request-Id": "abc",},
+        )
+
+        message = q.get(block=True, timeout=1)
+        assert isinstance(message, CommandWithMessage)
+        assert (
+            message.message.properties.headers[CommandReplyHeaders.REPLY_HEADERS_KEY]
+            == "X-Saga-Id,X-Request-Id"
+        )
+
+        message = q.get(block=True, timeout=1)
+        assert isinstance(message, ReplyWithMessage)
+        headers = message.message.properties.headers
+        assert headers["X-Saga-Id"] == 99
+        assert headers["X-Request-Id"] == "abc"
 
 
 def test_command_adapter(

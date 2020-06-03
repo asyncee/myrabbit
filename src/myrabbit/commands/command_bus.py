@@ -8,6 +8,7 @@ from pika import BasicProperties
 from myrabbit.commands import command_outcome
 from myrabbit.commands.command_outcome import CommandReply
 from myrabbit.commands.command_with_message import CommandWithMessage, ReplyWithMessage
+from myrabbit.commands.reply_headers import CommandReplyHeaders
 from myrabbit.core.consumer.callbacks import Callbacks
 from myrabbit.core.consumer.listener import Exchange, Listener, Queue
 from myrabbit.core.consumer.pika_message import PikaMessage
@@ -43,6 +44,7 @@ class CommandBus:
         command_name: str,
         body: Optional[dict] = None,
         properties: Optional[BasicProperties] = None,
+        reply_headers: Optional[dict] = None,
     ) -> None:
         properties = properties or BasicProperties()
 
@@ -59,6 +61,9 @@ class CommandBus:
         if properties.correlation_id is None:
             properties.correlation_id = uuid.uuid4().hex
 
+        if reply_headers:
+            self._set_reply_headers(properties, reply_headers)
+
         with self._publisher_factory.publisher() as publisher:
             publisher.publish(
                 self._exchange(command_destination),
@@ -66,6 +71,26 @@ class CommandBus:
                 binary_body,
                 properties,
             )
+
+    def _set_reply_headers(
+        self, properties: BasicProperties, reply_headers: dict
+    ) -> None:
+        properties.headers = properties.headers or {}
+        properties.headers.update(reply_headers)
+        properties.headers[CommandReplyHeaders.REPLY_HEADERS_KEY] = ",".join(
+            reply_headers
+        )
+
+    def _get_reply_headers(self, incoming_headers: Optional[dict]) -> dict:
+        incoming_headers = incoming_headers or {}
+        reply_headers = {}
+        reply_to_headers = incoming_headers.get(
+            CommandReplyHeaders.REPLY_HEADERS_KEY, ""
+        ).split(",")
+        for header_name in reply_to_headers:
+            if header_name in incoming_headers:
+                reply_headers[header_name] = incoming_headers[header_name]
+        return reply_headers
 
     def listener(
         self,
@@ -90,6 +115,8 @@ class CommandBus:
         def deserialize_command_and_handle_reply(
             message: PikaMessage,
         ) -> Optional[Reply]:
+            reply_headers = self._get_reply_headers(message.properties.headers)
+
             try:
                 callback_result: Optional[Union[CommandReply, Any]] = callback(
                     CommandWithMessage(
@@ -102,16 +129,24 @@ class CommandBus:
                     message,
                     callback,
                 )
-                return command_outcome.exception(e).to_reply(self._serializer)
+                return (
+                    command_outcome.exception(e)
+                    .with_headers(reply_headers)
+                    .to_reply(self._serializer)
+                )
 
             if callback_result is None:
                 return None
 
             if isinstance(callback_result, CommandReply):
-                return callback_result.to_reply(self._serializer)
+                return callback_result.with_headers(reply_headers).to_reply(
+                    self._serializer
+                )
 
-            return command_outcome.success(body=callback_result).to_reply(
-                self._serializer
+            return (
+                command_outcome.success(body=callback_result)
+                .with_headers(reply_headers)
+                .to_reply(self._serializer)
             )
 
         return Listener(

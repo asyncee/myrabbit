@@ -10,3 +10,6 @@ EventType = TypeVar("EventType")
 class EventWithMessage(Generic[EventType]):
     event: EventType
     message: PikaMessage
+
+    def headers(self) -> dict:
+        return self.message.properties.headers

@@ -73,6 +73,7 @@ class Service:
         command: CommandType,
         properties: Optional[BasicProperties] = None,
         reply_to: Optional[str] = None,
+        reply_headers: Optional[dict] = None,
     ) -> None:
         properties = properties or BasicProperties()
         properties.app_id = self.service_name
@@ -89,6 +90,7 @@ class Service:
             command_destination=command_destination,
             command=command,
             properties=properties,
+            reply_headers=reply_headers,
         )
 
     def on_event(
