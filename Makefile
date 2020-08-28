@@ -6,7 +6,10 @@ bootstrap:
 	env/bin/poetry install
 
 test:
-	pytest --ff --cov=src --cov-report term-missing  -m "not benchmark" tests
+	pytest --ff --cov=src --cov-report term-missing  -m "not benchmark" -m "not instrumentation" tests
+
+test_instrumentation:
+	pytest -s --ff -m "instrumentation" tests
 
 benchmark:
 	pytest -s -m benchmark tests

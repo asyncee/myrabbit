@@ -13,6 +13,8 @@ pika = "^1.1"
 pydantic = "^1.4"
 orjson = "^3.0.0"
 colorama = "^0.4.3"
+opentelemetry-sdk = { version = "^0.12b0", optional = true }
+opentelemetry-instrumentation = { version = "^0.12b0", optional = true }
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.0"
@@ -23,6 +25,9 @@ mypy = "^0.770"
 mypy-extensions = "^0.4.3"
 isort = "^4.3.21"
 black = "^19.10b0"
+
+[tool.poetry.extras]
+telemetry = ["opentelemetry-sdk", "opentelemetry-instrumentation"]
 
 [build-system]
 requires = ["poetry>=0.12"]
