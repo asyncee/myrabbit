@@ -15,6 +15,7 @@ orjson = "^3.0.0"
 colorama = "^0.4.3"
 opentelemetry-sdk = { version = "^0.12b0", optional = true }
 opentelemetry-instrumentation = { version = "^0.12b0", optional = true }
+wrapt = "^1.12.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.0"

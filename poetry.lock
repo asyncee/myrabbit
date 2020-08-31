@@ -442,7 +442,7 @@ version = "0.2.5"
 category = "main"
 description = "Module for decorators, wrappers and monkey patching."
 name = "wrapt"
-optional = true
+optional = false
 python-versions = "*"
 version = "1.12.1"
 
@@ -463,7 +463,7 @@ testing = ["jaraco.itertools", "func-timeout"]
 telemetry = ["opentelemetry-sdk", "opentelemetry-instrumentation"]
 
 [metadata]
-content-hash = "1cf2081466f25d770001288e4945aa70f2715bd8a33c84e12ee017014747b72d"
+content-hash = "dc824dba208eeb318022b9c871978b3cc92b973e4b1d55608f8b4f2220d4f37f"
 python-versions = "^3.7"
 
 [metadata.files]

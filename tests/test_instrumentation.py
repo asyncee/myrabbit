@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace.export import BatchExportSpanProcessor, ConsoleSpan
 
 from myrabbit import CommandWithMessage, Listener, PikaMessage, Service
 from myrabbit.contrib.opentelemetry.instrumentor import MyrabbitInstrumentor
+from myrabbit.core.consumer import Consumer
 from myrabbit.core.consumer.listener import Exchange
 from myrabbit.core.consumer.listener import Queue as Q
 from myrabbit.core.publisher import make_publisher
@@ -24,22 +25,14 @@ class Command:
 @pytest.mark.instrumentation
 def test_instrumentor():
     from myrabbit.core import consumer, publisher
-    from myrabbit.core.consumer import consumer as consumer_mod
-    from myrabbit.core.publisher import publisher as publisher_mod
 
-    assert consumer.Consumer == consumer_mod.Consumer
-    assert publisher.Publisher == publisher_mod.Publisher
-
-    original_consumer = consumer.Consumer
-    original_publisher = publisher.Publisher
+    original_consume = consumer.Consumer._handle_message
+    original_publish = publisher.Publisher.publish
 
     MyrabbitInstrumentor().instrument_myrabbit(service_name="instrumented_service")
 
-    assert consumer.Consumer == consumer_mod.Consumer
-    assert consumer.Consumer != original_consumer
-
-    assert publisher.Publisher == publisher_mod.Publisher
-    assert publisher.Publisher != original_publisher
+    assert consumer.Consumer._handle_message is not original_consume
+    assert publisher.Publisher.publish is not original_publish
 
 
 @pytest.mark.instrumentation
@@ -64,10 +57,6 @@ def test_instrumentation(rmq_url: str, run_consumer: Callable):
         )
     ]
 
-    # It is important to import Consumer right there
-    # because that way we import its instrumented version.
-    from myrabbit.core.consumer import Consumer
-
     consumer = Consumer(rmq_url, listeners)
 
     with run_consumer(consumer), make_publisher(rmq_url) as publisher:
@@ -90,8 +79,6 @@ def test_service_instrumentation(
     @x.on_command(Command)
     def x_handle_command(command: CommandWithMessage[Command]) -> None:
         pass
-
-    from myrabbit.core.consumer import Consumer
 
     consumer = Consumer(rmq_url, x.listeners)
 
