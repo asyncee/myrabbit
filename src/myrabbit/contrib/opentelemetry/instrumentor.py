@@ -42,9 +42,10 @@ class MyrabbitInstrumentor(BaseInstrumentor):
         service_name = self.service_name
 
         self._original_publish = original_publish = publisher.Publisher.publish
-        self._original_handle_message = (
-            original_handle_message
-        ) = consumer.Consumer._handle_message
+        self._original_handle_message = consumer.Consumer._handle_message
+        self._original_handle_message_threaded = (
+            consumer.ThreadedConsumer._handle_message
+        )
 
         def instrumented_publish(
             self,
@@ -133,6 +134,7 @@ class MyrabbitInstrumentor(BaseInstrumentor):
             properties: pika.BasicProperties,
             body: bytes,
             channel: ConsumedChannel,
+            original_handle_message,
         ) -> None:
             original_implementation = original_handle_message.__get__(
                 self, self.__class__
@@ -223,9 +225,23 @@ class MyrabbitInstrumentor(BaseInstrumentor):
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
 
+        def _wrap(impl):
+            def inner(*args, **kwargs):
+                return instrumented_handle_message(
+                    *args, **kwargs, original_handle_message=impl
+                )
+
+            return inner
+
         publisher.Publisher.publish = instrumented_publish
-        consumer.Consumer._handle_message = instrumented_handle_message
+        consumer.Consumer._handle_message = _wrap(consumer.Consumer._handle_message)
+        consumer.ThreadedConsumer._handle_message = _wrap(
+            consumer.ThreadedConsumer._handle_message
+        )
 
     def _uninstrument(self, **kwargs):
         publisher.Publisher.publish = self._original_publish
         consumer.Consumer._handle_message = self._original_handle_message
+        consumer.ThreadedConsumer._handle_message = (
+            self._original_handle_message_threaded
+        )
