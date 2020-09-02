@@ -67,75 +67,65 @@ class MyrabbitInstrumentor(BaseInstrumentor):
             span_name = f"{exchange}.{routing_key} send".lower()
 
             properties = properties or BasicProperties()
-            token = context.attach(
-                propagators.extract(get_header_from_properties, properties)
-            )
 
-            try:
-                with trace.get_tracer(__name__).start_as_current_span(
-                    span_name, kind=SpanKind.PRODUCER
-                ) as span:
-                    host = self._connection._impl.params.host
-                    port = self._connection._impl.params.port
-                    vhost = self._connection._impl.params.virtual_host
+            with trace.get_tracer(__name__).start_as_current_span(
+                span_name, kind=SpanKind.PRODUCER
+            ) as span:
+                host = self._connection._impl.params.host
+                port = self._connection._impl.params.port
+                vhost = self._connection._impl.params.virtual_host
 
-                    span.set_attribute("messaging.system", "rabbitmq")
-                    span.set_attribute("messaging.destination", exchange)
-                    span.set_attribute("messaging.protocol", "amqp")
-                    span.set_attribute("messaging.protocol_version", "0.9.1")
-                    span.set_attribute("messaging.url", f"amqp://{host}:{port}/{vhost}")
+                span.set_attribute("messaging.system", "rabbitmq")
+                span.set_attribute("messaging.destination", exchange)
+                span.set_attribute("messaging.protocol", "amqp")
+                span.set_attribute("messaging.protocol_version", "0.9.1")
+                span.set_attribute("messaging.url", f"amqp://{host}:{port}/{vhost}")
 
-                    if routing_key:
-                        span.set_attribute(
-                            "messaging.rabbitmq.routing_key", routing_key
-                        )
+                if routing_key:
+                    span.set_attribute("messaging.rabbitmq.routing_key", routing_key)
 
-                    if properties.correlation_id:
-                        span.set_attribute(
-                            "messaging.conversation_id", properties.correlation_id
-                        )
+                if properties.correlation_id:
+                    span.set_attribute(
+                        "messaging.conversation_id", properties.correlation_id
+                    )
 
-                    try:
-                        IPv4Address(host)
-                    except ValueError:
-                        span.set_attribute("net.peer.name", host)
-                    else:
-                        span.set_attribute("net.peer.ip", host)
+                try:
+                    IPv4Address(host)
+                except ValueError:
+                    span.set_attribute("net.peer.name", host)
+                else:
+                    span.set_attribute("net.peer.ip", host)
 
-                    span.set_attribute("net.peer.port", port)
-                    span.set_attribute("net.transport", "IP.TCP")
+                span.set_attribute("net.peer.port", port)
+                span.set_attribute("net.transport", "IP.TCP")
 
-                    span.set_attribute("thread.id", get_thread_id())
-                    span.set_attribute("thread.name", get_thread_name())
+                span.set_attribute("thread.id", get_thread_id())
+                span.set_attribute("thread.name", get_thread_name())
 
-                    span.set_attribute("service.name", service_name)
+                span.set_attribute("service.name", service_name)
 
-                    span.set_attribute("myrabbit.exchange", exchange)
-                    span.set_attribute("myrabbit.routing_key", routing_key)
+                span.set_attribute("myrabbit.exchange", exchange)
+                span.set_attribute("myrabbit.routing_key", routing_key)
 
-                    try:
-                        span.set_attribute("myrabbit.message", message.decode("utf-8"))
-                    except UnicodeDecodeError:
-                        pass
+                try:
+                    span.set_attribute("myrabbit.message", message.decode("utf-8"))
+                except UnicodeDecodeError:
+                    pass
 
-                    headers = properties.headers or {}
-                    propagators.inject(type(headers).__setitem__, headers)
-                    properties.headers = headers
+                headers = properties.headers or {}
+                propagators.inject(type(headers).__setitem__, headers)
+                properties.headers = headers
 
-                    try:
-                        original_implementation(
-                            exchange, routing_key, message, properties
-                        )
-                    except Exception as exc:
-                        exception = exc
-                        span.set_status(Status(StatusCanonicalCode.UNKNOWN))
-                    else:
-                        span.set_status(Status(StatusCanonicalCode.OK))
+                try:
+                    original_implementation(exchange, routing_key, message, properties)
+                except Exception as exc:
+                    exception = exc
+                    span.set_status(Status(StatusCanonicalCode.UNKNOWN))
+                else:
+                    span.set_status(Status(StatusCanonicalCode.OK))
 
-                if exception is not None:
-                    raise exception.with_traceback(exception.__traceback__)
-            finally:
-                context.detach(token)
+            if exception is not None:
+                raise exception.with_traceback(exception.__traceback__)
 
         def instrumented_handle_message(
             self,
