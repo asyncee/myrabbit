@@ -69,7 +69,7 @@ class MyrabbitInstrumentor(BaseInstrumentor):
             properties = properties or BasicProperties()
 
             with trace.get_tracer(__name__).start_as_current_span(
-                span_name, kind=SpanKind.PRODUCER
+                span_name, kind=SpanKind.CLIENT
             ) as span:
                 host = self._connection._impl.params.host
                 port = self._connection._impl.params.port
@@ -77,6 +77,7 @@ class MyrabbitInstrumentor(BaseInstrumentor):
 
                 span.set_attribute("messaging.system", "rabbitmq")
                 span.set_attribute("messaging.destination", exchange)
+                span.set_attribute("messaging.destination_kind", "queue")
                 span.set_attribute("messaging.protocol", "amqp")
                 span.set_attribute("messaging.protocol_version", "0.9.1")
                 span.set_attribute("messaging.url", f"amqp://{host}:{port}/{vhost}")
@@ -88,6 +89,9 @@ class MyrabbitInstrumentor(BaseInstrumentor):
                     span.set_attribute(
                         "messaging.conversation_id", properties.correlation_id
                     )
+
+                if properties.message_id:
+                    span.set_attribute("messaging.message_id", properties.message_id)
 
                 try:
                     IPv4Address(host)
@@ -158,24 +162,24 @@ class MyrabbitInstrumentor(BaseInstrumentor):
 
             try:
                 with trace.get_tracer(__name__).start_as_current_span(
-                    span_name, kind=trace.SpanKind.CONSUMER,
+                    span_name, kind=trace.SpanKind.SERVER
                 ) as span:
-                    parsed_url = urlparse(self._url)
-
-                    if parsed_url.password:
-                        parsed_url = parsed_url._replace(
-                            netloc="{}:{}@{}".format(
-                                parsed_url.username, "***", parsed_url.hostname
-                            )
-                        )
+                    host = channel.pika_channel.connection.params.host
+                    port = channel.pika_channel.connection.params.port
+                    url = f"amqp://{host}:{port}"
 
                     span.set_attribute("messaging.system", "rabbitmq")
                     span.set_attribute("messaging.destination", exchange)
+                    span.set_attribute("messaging.destination_kind", "queue")
                     span.set_attribute("messaging.operation", "process")
                     span.set_attribute("messaging.protocol", "amqp")
                     span.set_attribute("messaging.protocol_version", "0.9.1")
-                    span.set_attribute("messaging.url", parsed_url.geturl())
-                    span.set_attribute("messaging.message_id", properties.message_id)
+                    span.set_attribute("messaging.url", url)
+
+                    if properties.message_id:
+                        span.set_attribute(
+                            "messaging.message_id", properties.message_id
+                        )
 
                     if routing_key:
                         span.set_attribute(
@@ -188,13 +192,13 @@ class MyrabbitInstrumentor(BaseInstrumentor):
                         )
 
                     try:
-                        IPv4Address(parsed_url.hostname)
+                        IPv4Address(host)
                     except ValueError:
-                        span.set_attribute("net.peer.name", parsed_url.hostname)
+                        span.set_attribute("net.peer.name", host)
                     else:
-                        span.set_attribute("net.peer.ip", parsed_url.hostname)
+                        span.set_attribute("net.peer.ip", host)
 
-                    span.set_attribute("net.peer.port", parsed_url.port)
+                    span.set_attribute("net.peer.port", port)
                     span.set_attribute("net.transport", "IP.TCP")
 
                     span.set_attribute("thread.id", get_thread_id())
