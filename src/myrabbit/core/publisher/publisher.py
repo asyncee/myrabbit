@@ -24,7 +24,7 @@ def ignore_missing_exchange(fn: Callable) -> Callable:
             return fn(*args, **kwargs)
         except ChannelClosedByBroker as e:
             if int(e.reply_code) == 404:
-                logger.error(
+                logger.warning(
                     "Can not publish message because exchange does not exist: %s %s",
                     e.reply_code,
                     e.reply_text,
